@@ -1,0 +1,43 @@
+# Python Dependencies for Helmet Hardware Integration
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+numpy==1.24.3
+opencv-python==4.8.1.78
+pyserial==3.5
+requests==2.31.0
+
+# LiDAR and sensor processing
+pcl==0.3.0
+pyrealsense2==2.54.1.5217
+
+# IMU and motion sensors
+pymu==1.0.0
+adafruit-circuitpython-mpu6050==1.0.0
+
+# Audio processing
+pyaudio==0.2.11
+speechrecognition==3.10.0
+whisper==1.1.10
+
+# WebRTC and streaming
+aiortc==1.6.0
+websockets==11.0.3
+
+# Data processing
+pandas==2.0.3
+scipy==1.11.1
+
+# Machine learning for object detection
+torch==2.0.1
+torchvision==0.15.2
+ultralytics==8.0.196
+
+# Communication with web dashboard
+socketio==5.8.0
+flask==2.3.2
+flask-socketio==5.3.4
+
+# System monitoring
+psutil==5.9.5
+GPIO==0.7.1
