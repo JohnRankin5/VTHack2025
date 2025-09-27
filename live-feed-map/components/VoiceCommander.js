@@ -172,9 +172,12 @@ const VoiceCommander = ({ onNewCommand }) => {
   };
 
   return (
-    <div className="bg-gray-700 p-3 rounded">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-sm font-semibold">Command Center Voice</h3>
+    <div className="bg-gradient-to-b from-slate-700 to-slate-800 p-4 rounded-lg border border-orange-500/30 shadow-lg">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+          <h3 className="text-sm font-bold text-orange-400 tracking-wide">VOICE COMMAND</h3>
+        </div>
       </div>
 
       {/* Voice Controls */}
@@ -183,44 +186,46 @@ const VoiceCommander = ({ onNewCommand }) => {
           <button
             onClick={isJoined ? leaveCall : joinCall}
             disabled={isProcessing}
-            className={`w-full py-2 px-3 rounded text-xs font-semibold ${
+            className={`w-full py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200 ${
               isJoined 
-                ? 'bg-red-600 hover:bg-red-700 text-white' 
-                : 'bg-green-600 hover:bg-green-700 text-white'
-            } disabled:opacity-50`}
+                ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg' 
+                : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            {isJoined ? '📞 Leave Call' : '📞 Join Call'}
+            {isJoined ? '📞 DISCONNECT' : '📞 CONNECT'}
           </button>
           
           {isJoined && (
             <button
               onClick={isSpeaking ? stopSpeaking : startSpeaking}
               disabled={isProcessing}
-              className={`w-full py-2 px-3 rounded text-xs font-semibold ${
+              className={`w-full py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200 ${
                 isSpeaking 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-gray-600 hover:bg-gray-700 text-white'
-              } disabled:opacity-50`}
+                  ? 'bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg animate-pulse' 
+                  : 'bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {isSpeaking ? '🎤 Stop Speaking' : '🎤 Start Speaking'}
+              {isSpeaking ? '🎤 TRANSMITTING' : '🎤 TRANSMIT'}
             </button>
           )}
         </div>
 
         {/* Transcript Display */}
-        <div className="bg-gray-600 p-2 rounded min-h-[60px]">
-          <div className="text-xs text-gray-300 mb-1">Live Transcript:</div>
-          <div className="text-sm text-white">
-            {!isJoined ? 'Join call to start voice commands' :
-             !isSpeaking ? 'Click "Start Speaking" to begin talking' :
-             transcript || 'Listening...'}
+        <div className="bg-slate-600/50 p-3 rounded-lg min-h-[60px] border border-slate-500/50">
+          <div className="text-xs text-slate-300 mb-2 font-semibold tracking-wide">LIVE TRANSCRIPT</div>
+          <div className="text-sm text-white font-mono">
+            {!isJoined ? 'Connect to establish voice link' :
+             !isSpeaking ? 'Click TRANSMIT to begin speaking' :
+             transcript || 'Listening for voice input...'}
           </div>
         </div>
         
         {/* Status indicator */}
         {isJoined && (
-          <div className="text-xs text-green-400 text-center mb-2">
-            {isSpeaking ? '✓ Speaking - Commands auto-send' : '✓ Ready to speak'}
+          <div className="text-xs text-center mb-2 p-2 bg-slate-700/50 rounded-lg border border-slate-600/50">
+            <div className={`font-bold ${isSpeaking ? 'text-orange-400' : 'text-green-400'}`}>
+              {isSpeaking ? '🔴 TRANSMITTING - Auto-send active' : '🟢 READY - Voice link established'}
+            </div>
           </div>
         )}
 
@@ -228,9 +233,23 @@ const VoiceCommander = ({ onNewCommand }) => {
 
       {/* Status Indicators */}
       <div className="flex justify-center text-xs mb-3">
-        <div className={`flex items-center gap-1 ${isJoined ? 'text-green-400' : 'text-gray-400'}`}>
-          <div className={`w-2 h-2 rounded-full ${isJoined ? 'bg-green-400' : 'bg-gray-400'}`}></div>
-          {isJoined ? (isSpeaking ? 'Speaking' : 'In Call - Ready') : 'Disconnected'}
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+          isJoined 
+            ? isSpeaking 
+              ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' 
+              : 'bg-green-500/20 border-green-500/50 text-green-400'
+            : 'bg-slate-500/20 border-slate-500/50 text-slate-400'
+        }`}>
+          <div className={`w-2 h-2 rounded-full ${
+            isJoined 
+              ? isSpeaking 
+                ? 'bg-orange-400 animate-pulse' 
+                : 'bg-green-400 animate-pulse'
+              : 'bg-slate-400'
+          }`}></div>
+          <span className="font-bold tracking-wide">
+            {isJoined ? (isSpeaking ? 'TRANSMITTING' : 'CONNECTED') : 'OFFLINE'}
+          </span>
         </div>
       </div>
 
