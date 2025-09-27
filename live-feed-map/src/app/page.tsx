@@ -28,6 +28,10 @@ export default function Home() {
     }
   };
 
+  const handleVoiceCommand = (message: any) => {
+    setMessages(prev => [message, ...prev]);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Main Content Grid */}
@@ -57,10 +61,10 @@ export default function Home() {
           <div className="flex-1 flex flex-col">
             <h2 className="text-lg font-semibold mb-2">Command Center Operations</h2>
             
-            {/* Voice Commander */}
-            <div className="mb-4">
-              <VoiceCommander />
-            </div>
+                    {/* Voice Commander */}
+                    <div className="mb-4">
+                      <VoiceCommander onNewCommand={handleVoiceCommand} />
+                    </div>
             
             {/* Voice Transcriptions from Firefighters */}
             <div className="mb-4">
