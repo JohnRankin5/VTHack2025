@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import Map from '../../components/Map';
 import LiveFeed from '../../components/LiveFeed';
 import Status from '../../components/Status';
+import Transcriptions from '../../components/Transcriptions';
+import VoiceCommander from '../../components/VoiceCommander';
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -27,11 +30,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <header className="bg-red-600 p-4 shadow-lg">
-        <h1 className="text-2xl font-bold text-center">Firefighter Helmet HUD</h1>
-      </header>
-
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 h-[calc(100vh-80px)]">
         
@@ -57,10 +55,20 @@ export default function Home() {
 
           {/* Communications Section */}
           <div className="flex-1 flex flex-col">
-            <h2 className="text-lg font-semibold mb-2">Communications</h2>
+            <h2 className="text-lg font-semibold mb-2">Command Center Operations</h2>
+            
+            {/* Voice Commander */}
+            <div className="mb-4">
+              <VoiceCommander />
+            </div>
+            
+            {/* Voice Transcriptions from Firefighters */}
+            <div className="mb-4">
+              <Transcriptions />
+            </div>
             
             {/* Messages Display */}
-            <div className="flex-1 bg-gray-700 rounded p-3 mb-3 overflow-y-auto max-h-48">
+            <div className="flex-1 bg-gray-700 rounded p-3 mb-3 overflow-y-auto max-h-32">
               {messages.map((message) => (
                 <div key={message.id} className="mb-2 p-2 bg-gray-600 rounded">
                   <div className="text-xs text-gray-300">{message.sender} - {message.timestamp}</div>
@@ -69,19 +77,19 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Message Input */}
+            {/* Quick Text Commands */}
             <div className="flex gap-2">
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                placeholder="Type message..."
-                className="flex-1 bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-red-500 focus:outline-none"
+                placeholder="Quick text command..."
+                className="flex-1 bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-red-500 focus:outline-none text-sm"
               />
               <button
                 onClick={sendMessage}
-                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold"
+                className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded font-semibold text-sm"
               >
                 Send
               </button>
