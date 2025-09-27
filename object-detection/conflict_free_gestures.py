@@ -56,14 +56,14 @@ class ConflictFreeGestureDetector:
         tip_y = landmarks[tip_id].y
         pip_y = landmarks[pip_id].y
         # More strict: finger must be clearly above PIP
-        return tip_y < pip_y - 0.02  # 2% margin
+        return tip_y < pip_y - 0.05  # 5% margin for stricter detection
     
     def is_finger_down(self, landmarks, tip_id, pip_id):
         """Check if a finger is pointing down with stricter criteria"""
         tip_y = landmarks[tip_id].y
         pip_y = landmarks[pip_id].y
         # More strict: finger must be clearly below PIP
-        return tip_y > pip_y + 0.02  # 2% margin
+        return tip_y > pip_y + 0.05  # 5% margin for stricter detection
     
     def is_thumb_up(self, landmarks):
         """Check if thumb is clearly up and extended"""
@@ -143,8 +143,8 @@ class ConflictFreeGestureDetector:
         
         distance = math.sqrt((thumb_tip.x - index_tip.x)**2 + (thumb_tip.y - index_tip.y)**2)
         
-        # Circle formation
-        if distance > 0.06:  # Stricter distance
+        # Circle formation - much stricter
+        if distance > 0.04:  # Even stricter distance for OK gesture
             return False
         
         # Other fingers must be up

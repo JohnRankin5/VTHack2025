@@ -74,12 +74,12 @@ class HandGestureDetector:
             tip_y = landmarks[tip].y
             pip_y = landmarks[pip].y
             
-            # Finger is extended if tip is above pip (more lenient threshold)
-            if tip_y < pip_y:  # Changed from > to < for proper extension
+            # Finger is extended if tip is clearly above pip (stricter threshold)
+            if tip_y < pip_y - 0.05:  # 5% margin for clearer detection
                 extended_count += 1
         
-        # Return true if at least half the fingers are extended
-        return extended_count >= len(finger_tips) / 2
+        # Return true if all fingers are clearly extended
+        return extended_count == len(finger_tips)
     
     def detect_peace_gesture(self, landmarks: List) -> bool:
         """Detect peace gesture (V sign) - index and middle finger extended"""
@@ -240,33 +240,51 @@ class HandGestureDetector:
                         'z': landmark.z
                     })
                 
-                # Test each gesture
-                for gesture_name, gesture_func in self.gesture_definitions.items():
-                    try:
-                        if gesture_func(landmarks):
-                            # Calculate hand bounding box
-                            x_coords = [lm.x for lm in landmarks]
-                            y_coords = [lm.y for lm in landmarks]
-                            
-                            x_min, x_max = int(min(x_coords) * w), int(max(x_coords) * w)
-                            y_min, y_max = int(min(y_coords) * h), int(max(y_coords) * h)
-                            
-                            gesture_key = f"{gesture_name}_{hand_idx}"
-                            
-                            # Update or add gesture to active gestures
-                            self.active_gestures[gesture_key] = {
-                                'gesture': gesture_name,
-                                'meaning': self.gesture_meanings[gesture_name],
-                                'confidence': 0.8,
-                                'bbox': [x_min, y_min, x_max, y_max],
-                                'center': [int((x_min + x_max) / 2), int((y_min + y_max) / 2)],
-                                'hand_id': hand_idx,
-                                'priority': self.get_gesture_priority(gesture_name),
-                                'timestamp': current_time
-                            }
-                    except Exception as e:
-                        print(f"Error detecting {gesture_name}: {e}")
-                        continue
+                # Test gestures in priority order (highest first) to prevent conflicts
+                gesture_priority_order = [
+                    'point_up',    # Emergency - highest priority
+                    'phone',       # Need help
+                    'thumbs_down', # No/Failure
+                    'stop',        # Stop/Freeze
+                    'ok',          # Detected person
+                    'peace',       # Room clear
+                    'thumbs_up',   # Affirmative
+                    'move'         # Let's move - lowest priority
+                ]
+                
+                detected_gesture = None
+                for gesture_name in gesture_priority_order:
+                    if gesture_name in self.gesture_definitions:
+                        try:
+                            if self.gesture_definitions[gesture_name](landmarks):
+                                detected_gesture = gesture_name
+                                break  # Take the first (highest priority) match
+                        except Exception as e:
+                            print(f"Error detecting {gesture_name}: {e}")
+                            continue
+                
+                # If a gesture was detected, add it to active gestures
+                if detected_gesture:
+                    # Calculate hand bounding box
+                    x_coords = [lm.x for lm in landmarks]
+                    y_coords = [lm.y for lm in landmarks]
+                    
+                    x_min, x_max = int(min(x_coords) * w), int(max(x_coords) * w)
+                    y_min, y_max = int(min(y_coords) * h), int(max(y_coords) * h)
+                    
+                    gesture_key = f"{detected_gesture}_{hand_idx}"
+                    
+                    # Update or add gesture to active gestures
+                    self.active_gestures[gesture_key] = {
+                        'gesture': detected_gesture,
+                        'meaning': self.gesture_meanings[detected_gesture],
+                        'confidence': 0.9,  # Higher confidence due to priority-based detection
+                        'bbox': [x_min, y_min, x_max, y_max],
+                        'center': [int((x_min + x_max) / 2), int((y_min + y_max) / 2)],
+                        'hand_id': hand_idx,
+                        'priority': self.get_gesture_priority(detected_gesture),
+                        'timestamp': current_time
+                    }
         
         # Return all active gestures (both current and persistent)
         for gesture_key, gesture_data in self.active_gestures.items():

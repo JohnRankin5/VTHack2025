@@ -1,0 +1,31 @@
+# VTHacks25 Project Requirements
+# Master requirements file for the entire project
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+opencv-python==4.8.1.78
+numpy==1.24.3
+Pillow==10.0.1
+
+# Computer vision and AI
+mediapipe==0.10.8
+ultralytics==8.0.196
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Web and API
+fastapi==0.104.1
+uvicorn==0.24.0
+requests==2.31.0
+websockets==12.0
+
+# Audio processing
+pyaudio==0.2.11
+speechrecognition==3.10.0
+
+# Hardware communication
+pyserial==3.5
+
+# Development tools
+jupyter==1.0.0
+matplotlib==3.7.2

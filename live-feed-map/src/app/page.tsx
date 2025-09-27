@@ -10,6 +10,7 @@ import VoiceCommander from '../../components/VoiceCommander';
 import SafetyAlert from '../../components/SafetyAlert';
 import ObjectDetection from '../../components/ObjectDetection';
 import JetsonData from '../../components/JetsonData';
+import GestureDetection from '../../components/GestureDetection';
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -132,6 +133,11 @@ export default function Home() {
             {/* Jetson Sensor Data */}
             <div className="mb-4">
               <JetsonData />
+            </div>
+            
+            {/* Gesture Detection */}
+            <div className="mb-4">
+              <GestureDetection />
             </div>
             
             {/* Messages Display */}

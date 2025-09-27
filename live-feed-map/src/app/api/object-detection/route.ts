@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 
 interface Detection {
-  class_id: number;
-  class_name: string;
+  type?: string;
+  class_id?: number;
+  class_name?: string;
   confidence: number;
   bbox: [number, number, number, number]; // [x1, y1, x2, y2]
   center: [number, number];
+  priority?: number;
+  // Gesture-specific fields
+  gesture?: string;
+  meaning?: string;
+  hand_id?: number;
+  method?: string;
 }
 
 interface DetectionResult {
@@ -13,7 +20,17 @@ interface DetectionResult {
   camera_id: string;
   timestamp: string;
   detections: Detection[];
+  object_detections?: Detection[];
+  gesture_detections?: Detection[];
   detection_count: number;
+  object_count?: number;
+  gesture_count?: number;
+  room_objects?: Detection[];
+  room_object_count?: number;
+  high_priority_objects?: Detection[];
+  high_priority_count?: number;
+  emergency_gestures?: Detection[];
+  emergency_gesture_count?: number;
   source: string;
 }
 
@@ -37,7 +54,17 @@ export async function POST(request: Request) {
       camera_id: data.camera_id,
       timestamp: data.timestamp,
       detections: data.detections,
+      object_detections: data.object_detections,
+      gesture_detections: data.gesture_detections,
       detection_count: data.detection_count || data.detections.length,
+      object_count: data.object_count,
+      gesture_count: data.gesture_count,
+      room_objects: data.room_objects,
+      room_object_count: data.room_object_count,
+      high_priority_objects: data.high_priority_objects,
+      high_priority_count: data.high_priority_count,
+      emergency_gestures: data.emergency_gestures,
+      emergency_gesture_count: data.emergency_gesture_count,
       source: data.source || 'unknown'
     };
 
@@ -49,12 +76,23 @@ export async function POST(request: Request) {
       detectionResults = detectionResults.slice(0, MAX_RESULTS);
     }
 
-    console.log(`Received detection results from ${newResult.camera_id}: ${newResult.detection_count} objects detected`);
+    console.log(`Received detection results from ${newResult.camera_id}: ${newResult.detection_count} total detections`);
     
-    // Log detected objects
-    if (newResult.detections.length > 0) {
-      const objectTypes = newResult.detections.map(d => d.class_name).join(', ');
+    // Log detected objects and gestures
+    if (newResult.object_detections && newResult.object_detections.length > 0) {
+      const objectTypes = newResult.object_detections.map(d => d.class_name).join(', ');
       console.log(`Detected objects: ${objectTypes}`);
+    }
+    
+    if (newResult.gesture_detections && newResult.gesture_detections.length > 0) {
+      const gestureTypes = newResult.gesture_detections.map(d => `${d.gesture} (${d.meaning})`).join(', ');
+      console.log(`Detected gestures: ${gestureTypes}`);
+    }
+    
+    // Alert for emergency gestures
+    if (newResult.emergency_gestures && newResult.emergency_gestures.length > 0) {
+      const emergencyTypes = newResult.emergency_gestures.map(d => `${d.gesture} (${d.meaning})`).join(', ');
+      console.log(`🚨 EMERGENCY GESTURES DETECTED: ${emergencyTypes}`);
     }
 
     return NextResponse.json({ 
