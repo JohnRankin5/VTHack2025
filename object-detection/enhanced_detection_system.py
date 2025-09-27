@@ -35,10 +35,8 @@ class EnhancedDetectionSystem:
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
         self.lock = threading.Lock()
         
-        # Gesture tracking
+        # Gesture tracking (now handled by detector itself)
         self.last_gestures = []
-        self.gesture_cooldown = {}  # Prevent spam
-        self.gesture_cooldown_time = 2.0  # 2 seconds between same gesture
         
     def load_coco_classes(self):
         """Load COCO class names"""
@@ -149,24 +147,11 @@ class EnhancedDetectionSystem:
         
         # Hand gesture detection
         try:
-            gestures = self.gesture_detector.detect_gestures(frame)
+            detected_gestures = self.gesture_detector.detect_gestures(frame)
             
-            # Filter gestures based on cooldown
-            current_time = time.time()
-            filtered_gestures = []
-            
-            for gesture in gestures:
-                gesture_name = gesture['gesture']
-                
-                # Check cooldown
-                if gesture_name in self.gesture_cooldown:
-                    if current_time - self.gesture_cooldown[gesture_name] < self.gesture_cooldown_time:
-                        continue
-                
-                # Add to cooldown
-                self.gesture_cooldown[gesture_name] = current_time
-                
-                # Convert gesture to detection format
+            # Convert gestures to detection format (persistence handled by detector)
+            gestures = []
+            for gesture in detected_gestures:
                 gesture_detection = {
                     "type": "gesture",
                     "gesture": gesture['gesture'],
@@ -178,12 +163,11 @@ class EnhancedDetectionSystem:
                     "hand_id": gesture['hand_id'],
                     "method": "mediapipe"
                 }
-                filtered_gestures.append(gesture_detection)
-            
-            gestures = filtered_gestures
+                gestures.append(gesture_detection)
             
         except Exception as e:
             print(f"Error in gesture detection: {e}")
+            gestures = []
         
         return detections, gestures
     

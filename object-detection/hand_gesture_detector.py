@@ -18,10 +18,14 @@ class HandGestureDetector:
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=2,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.8  # Increased confidence for better tracking
+            min_detection_confidence=0.5,  # Lower for better detection
+            min_tracking_confidence=0.5   # Lower for better tracking
         )
         self.mp_drawing = mp.solutions.drawing_utils
+        
+        # Gesture persistence tracking
+        self.active_gestures = {}  # Track active gestures with timestamps
+        self.gesture_persistence_time = 3.0  # Keep gesture visible for 3 seconds
         
         # Gesture definitions
         self.gesture_definitions = {
@@ -62,6 +66,7 @@ class HandGestureDetector:
         if len(finger_tips) != len(finger_pips):
             return False
         
+        extended_count = 0
         for tip, pip in zip(finger_tips, finger_pips):
             if tip >= len(landmarks) or pip >= len(landmarks):
                 return False
@@ -69,11 +74,12 @@ class HandGestureDetector:
             tip_y = landmarks[tip].y
             pip_y = landmarks[pip].y
             
-            # Finger is extended if tip is above pip
-            if tip_y > pip_y:
-                return False
+            # Finger is extended if tip is above pip (more lenient threshold)
+            if tip_y < pip_y:  # Changed from > to < for proper extension
+                extended_count += 1
         
-        return True
+        # Return true if at least half the fingers are extended
+        return extended_count >= len(finger_tips) / 2
     
     def detect_peace_gesture(self, landmarks: List) -> bool:
         """Detect peace gesture (V sign) - index and middle finger extended"""
@@ -210,15 +216,20 @@ class HandGestureDetector:
         
         return is_horizontal and all_extended
     
+    
     def detect_gestures(self, frame: np.ndarray) -> List[Dict]:
-        """Detect all gestures in the frame"""
+        """Detect gestures with persistence tracking"""
         results = self.hands.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         detected_gestures = []
+        current_time = time.time()
+        
+        # Clean up old gestures
+        self.cleanup_old_gestures(current_time)
         
         if results.multi_hand_landmarks:
             for hand_idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
                 landmarks = hand_landmarks.landmark
-
+                
                 # Convert normalized coordinates to pixel coordinates
                 h, w, _ = frame.shape
                 pixel_landmarks = []
@@ -228,33 +239,52 @@ class HandGestureDetector:
                         'y': int(landmark.y * h),
                         'z': landmark.z
                     })
-
+                
                 # Test each gesture
                 for gesture_name, gesture_func in self.gesture_definitions.items():
                     try:
                         if gesture_func(landmarks):
-                            # Gesture detected, append it to the results
+                            # Calculate hand bounding box
                             x_coords = [lm.x for lm in landmarks]
                             y_coords = [lm.y for lm in landmarks]
-
+                            
                             x_min, x_max = int(min(x_coords) * w), int(max(x_coords) * w)
                             y_min, y_max = int(min(y_coords) * h), int(max(y_coords) * h)
-
-                            gesture_result = {
+                            
+                            gesture_key = f"{gesture_name}_{hand_idx}"
+                            
+                            # Update or add gesture to active gestures
+                            self.active_gestures[gesture_key] = {
                                 'gesture': gesture_name,
                                 'meaning': self.gesture_meanings[gesture_name],
-                                'confidence': 0.8,  # MediaPipe confidence
+                                'confidence': 0.8,
                                 'bbox': [x_min, y_min, x_max, y_max],
                                 'center': [int((x_min + x_max) / 2), int((y_min + y_max) / 2)],
                                 'hand_id': hand_idx,
-                                'priority': self.get_gesture_priority(gesture_name)
+                                'priority': self.get_gesture_priority(gesture_name),
+                                'timestamp': current_time
                             }
-                            detected_gestures.append(gesture_result)
                     except Exception as e:
                         print(f"Error detecting {gesture_name}: {e}")
                         continue
         
+        # Return all active gestures (both current and persistent)
+        for gesture_key, gesture_data in self.active_gestures.items():
+            detected_gestures.append(gesture_data)
+        
         return detected_gestures
+    
+    def cleanup_old_gestures(self, current_time):
+        """Remove gestures that are older than persistence time"""
+        keys_to_remove = []
+        for gesture_key, gesture_data in self.active_gestures.items():
+            if current_time - gesture_data['timestamp'] > self.gesture_persistence_time:
+                keys_to_remove.append(gesture_key)
+        
+        for key in keys_to_remove:
+            del self.active_gestures[key]
+
+
     
     def get_gesture_priority(self, gesture_name: str) -> int:
         """Get priority for gesture (higher = more important)"""
