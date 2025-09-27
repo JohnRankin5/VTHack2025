@@ -1,0 +1,67 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="95" fill="url(#gradient1)" stroke="url(#gradient2)" stroke-width="4"/>
+  
+  <!-- Inner Shield -->
+  <path d="M100 20 L140 50 L140 120 L100 150 L60 120 L60 50 Z" fill="url(#gradient3)" stroke="url(#gradient4)" stroke-width="2"/>
+  
+  <!-- Fire Symbol -->
+  <path d="M85 80 C85 70, 90 65, 100 65 C110 65, 115 70, 115 80 C115 90, 110 100, 100 110 C90 100, 85 90, 85 80 Z" fill="url(#gradient5)"/>
+  
+  <!-- Flame Details -->
+  <path d="M90 75 C90 70, 95 68, 100 68 C105 68, 110 70, 110 75 C110 80, 105 85, 100 90 C95 85, 90 80, 90 75 Z" fill="url(#gradient6)"/>
+  
+  <!-- AI Circuit Pattern -->
+  <circle cx="70" cy="70" r="3" fill="#00ff88"/>
+  <circle cx="130" cy="70" r="3" fill="#00ff88"/>
+  <circle cx="70" cy="130" r="3" fill="#00ff88"/>
+  <circle cx="130" cy="130" r="3" fill="#00ff88"/>
+  
+  <!-- Circuit Lines -->
+  <path d="M70 70 L100 100" stroke="#00ff88" stroke-width="1" opacity="0.6"/>
+  <path d="M130 70 L100 100" stroke="#00ff88" stroke-width="1" opacity="0.6"/>
+  <path d="M70 130 L100 100" stroke="#00ff88" stroke-width="1" opacity="0.6"/>
+  <path d="M130 130 L100 100" stroke="#00ff88" stroke-width="1" opacity="0.6"/>
+  
+  <!-- Text -->
+  <text x="100" y="180" text-anchor="middle" fill="url(#gradient7)" font-family="Arial, sans-serif" font-size="16" font-weight="bold">FIREGUARD</text>
+  
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f7931e;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a2a2a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="gradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#f7931e;stop-opacity:0.8" />
+    </linearGradient>
+    
+    <linearGradient id="gradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f7931e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff4500;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="gradient6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffa500;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff6b35;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="gradient7" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f7931e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>
