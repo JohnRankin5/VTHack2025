@@ -9,6 +9,7 @@ import Transcriptions from '../../components/Transcriptions';
 import VoiceCommander from '../../components/VoiceCommander';
 import SafetyAlert from '../../components/SafetyAlert';
 import ObjectDetection from '../../components/ObjectDetection';
+import JetsonData from '../../components/JetsonData';
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -126,6 +127,11 @@ export default function Home() {
             {/* Object Detection */}
             <div className="mb-4">
               <ObjectDetection cameraId="FF-001" />
+            </div>
+            
+            {/* Jetson Sensor Data */}
+            <div className="mb-4">
+              <JetsonData />
             </div>
             
             {/* Messages Display */}
