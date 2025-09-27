@@ -1,7 +1,7 @@
 from rplidarc1 import RPLidar
 import asyncio
 
-lidar = RPLidar("COM5", 460800)
+lidar = RPLidar("COM3", 460800)
 
 async def process_scan_data():
     # Start the scan with dictionary output
