@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "../../components/Navbar.js";
+import Navbar from "../../components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Firefighter Helmet HUD",
-  description: "Real-time monitoring system for firefighter safety",
+  title: "FireGuard - Tactical Command System",
+  description: "Advanced AI-powered firefighter safety and command system with real-time monitoring, object detection, and voice communications",
+  keywords: "firefighter, safety, AI, command system, real-time monitoring, tactical",
 };
 
 export default function RootLayout({

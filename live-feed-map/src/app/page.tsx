@@ -8,6 +8,7 @@ import Status from '../../components/Status';
 import Transcriptions from '../../components/Transcriptions';
 import VoiceCommander from '../../components/VoiceCommander';
 import SafetyAlert from '../../components/SafetyAlert';
+import ObjectDetection from '../../components/ObjectDetection';
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -54,13 +55,13 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white">
       {/* Status Banner */}
-      <div className="bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400 py-3 px-6 text-center">
-        <div className="flex items-center justify-center gap-3">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium">Operations Active</span>
-          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+      <div className="bg-gradient-to-r from-emerald-500/20 via-emerald-400/10 to-emerald-500/20 border-b border-emerald-500/30 text-emerald-300 py-4 px-6 text-center backdrop-blur-sm">
+        <div className="flex items-center justify-center gap-4">
+          <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50"></div>
+          <span className="text-sm font-semibold tracking-wide">OPERATIONS ACTIVE - ALL SYSTEMS ONLINE</span>
+          <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50"></div>
         </div>
       </div>
 
@@ -68,30 +69,30 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 p-8 h-[calc(100vh-120px)]">
         
         {/* Left Column - Live Feed */}
-        <div className="lg:col-span-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-xl">
+        <div className="lg:col-span-1 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-2xl hover:shadow-red-500/20 transition-all duration-300">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <h2 className="text-lg font-semibold text-white">Live Feed</h2>
+            <div className="w-4 h-4 bg-gradient-to-r from-red-500 to-orange-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
+            <h2 className="text-lg font-bold text-white bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">Live Feed</h2>
           </div>
           <LiveFeed />
         </div>
 
         {/* Center Column - Map */}
-        <div className="lg:col-span-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-xl">
+        <div className="lg:col-span-1 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-2xl hover:shadow-blue-500/20 transition-all duration-300">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-            <h2 className="text-lg font-semibold text-white">Tactical Map</h2>
+            <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full animate-pulse shadow-lg shadow-blue-500/50"></div>
+            <h2 className="text-lg font-bold text-white bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Tactical Map</h2>
           </div>
           <Map />
         </div>
 
         {/* Right Column - Communications & Status */}
-        <div className="lg:col-span-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-xl flex flex-col">
+        <div className="lg:col-span-1 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 flex flex-col">
           {/* Status Section */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
-              <h2 className="text-lg font-semibold text-white">System Status</h2>
+              <div className="w-4 h-4 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50"></div>
+              <h2 className="text-lg font-bold text-white bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">System Status</h2>
             </div>
             <Status />
           </div>
@@ -99,8 +100,8 @@ export default function Home() {
           {/* Communications Section */}
           <div className="flex-1 flex flex-col">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-              <h2 className="text-lg font-semibold text-white">Command Center</h2>
+              <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse shadow-lg shadow-blue-500/50"></div>
+              <h2 className="text-lg font-bold text-white bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Command Center</h2>
             </div>
             
             {/* Safety Alert System */}
@@ -122,16 +123,21 @@ export default function Home() {
               <Transcriptions />
             </div>
             
+            {/* Object Detection */}
+            <div className="mb-4">
+              <ObjectDetection cameraId="FF-001" />
+            </div>
+            
             {/* Messages Display */}
-            <div className="flex-1 bg-white/5 rounded-xl p-4 mb-4 overflow-y-auto max-h-32 border border-white/10">
-              <div className="text-sm text-gray-400 font-medium mb-3">Communications Log</div>
+            <div className="flex-1 bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-4 mb-4 overflow-y-auto max-h-32 border border-white/20 backdrop-blur-sm">
+              <div className="text-sm text-gray-300 font-semibold mb-3 bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Communications Log</div>
               {messages.map((message) => (
-                <div key={message.id} className="mb-3 p-3 bg-white/5 rounded-lg border-l-4 border-blue-500">
+                <div key={message.id} className="mb-3 p-3 bg-gradient-to-r from-white/10 to-white/5 rounded-lg border-l-4 border-blue-500 shadow-lg hover:shadow-blue-500/20 transition-all duration-200">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-blue-400 font-medium">{message.sender}</span>
+                    <span className="text-sm text-blue-300 font-semibold">{message.sender}</span>
                     <span className="text-xs text-gray-400 font-mono">{message.timestamp}</span>
                   </div>
-                  <div className="text-sm text-white">{message.text}</div>
+                  <div className="text-sm text-white font-medium">{message.text}</div>
                 </div>
               ))}
             </div>
@@ -144,11 +150,11 @@ export default function Home() {
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                 placeholder="Enter command..."
-                className="flex-1 bg-white/10 text-white p-3 rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none text-sm font-medium"
+                className="flex-1 bg-gradient-to-r from-white/15 to-white/10 text-white p-3 rounded-lg border border-white/30 focus:border-blue-500 focus:outline-none text-sm font-medium backdrop-blur-sm shadow-lg"
               />
               <button
                 onClick={sendMessage}
-                className="bg-blue-500 hover:bg-blue-600 px-4 py-3 rounded-lg font-medium text-sm shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 px-4 py-3 rounded-lg font-semibold text-sm shadow-lg shadow-blue-500/25 transition-all duration-200 transform hover:scale-[1.02] hover:shadow-blue-500/40"
               >
                 Send
               </button>

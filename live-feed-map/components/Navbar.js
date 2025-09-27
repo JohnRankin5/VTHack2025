@@ -18,11 +18,15 @@ const Navbar = () => {
         {/* Logo/Title */}
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="text-2xl">🔥</div>
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <img 
+              src="/fireguard-logo.svg" 
+              alt="FireGuard Logo" 
+              className="w-12 h-12"
+            />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-lg"></div>
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-white">FireGuard</h1>
+            <h1 className="text-xl font-bold text-white bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">FireGuard</h1>
             <p className="text-xs text-gray-400 font-medium">Tactical Command System</p>
           </div>
         </div>

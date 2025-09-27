@@ -20,7 +20,6 @@
     "simple-peer": "^9.11.1",
     "three": "^0.158.0",
     "@react-three/fiber": "^8.15.0",
-    "better-sqlite3": "^9.2.2",
     "openai": "^4.20.0"
   },
   "devDependencies": {

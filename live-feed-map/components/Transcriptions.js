@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 const Transcriptions = () => {
   const [transcriptions, setTranscriptions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
   const fetchTranscriptions = async () => {
     try {
@@ -23,26 +24,44 @@ const Transcriptions = () => {
   };
 
   useEffect(() => {
-    // Fetch transcriptions on component mount
-    fetchTranscriptions();
+    if (!isRunning) return;
     
     // Set up polling to fetch new transcriptions every 5 seconds
     const interval = setInterval(fetchTranscriptions, 5000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isRunning]);
+
+  const toggleTranscriptions = () => {
+    setIsRunning(!isRunning);
+    if (!isRunning) {
+      fetchTranscriptions(); // Initial fetch when starting
+    }
+  };
 
   return (
     <div className="bg-gray-700 p-3 rounded">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-sm font-semibold">Voice Transcriptions</h3>
-        <button
-          onClick={fetchTranscriptions}
-          disabled={isLoading}
-          className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded disabled:opacity-50"
-        >
-          {isLoading ? 'Loading...' : 'Refresh'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={toggleTranscriptions}
+            className={`text-xs px-2 py-1 rounded font-semibold transition-all duration-200 ${
+              isRunning 
+                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+          >
+            {isRunning ? 'Stop' : 'Start'}
+          </button>
+          <button
+            onClick={fetchTranscriptions}
+            disabled={isLoading}
+            className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded disabled:opacity-50"
+          >
+            {isLoading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
       </div>
       
       <div className="max-h-48 overflow-y-auto space-y-2">
