@@ -1,0 +1,23 @@
+# Object Detection and Gesture Recognition Requirements
+# Install with: pip install -r requirements.txt
+
+# Core computer vision
+opencv-python==4.8.1.78
+numpy==1.24.3
+
+# YOLO object detection
+ultralytics==8.0.196
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Hand gesture recognition
+mediapipe==0.10.8
+
+# Image processing
+Pillow==10.0.1
+
+# HTTP requests for API communication
+requests==2.31.0
+
+# Optional: For better performance on GPU
+# torch-audio>=2.0.0

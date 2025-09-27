@@ -1,0 +1,20 @@
+# Hand Gesture Detection Requirements
+# Install with: pip install -r gesture_requirements.txt
+
+# MediaPipe for hand gesture recognition
+mediapipe==0.10.8
+
+# OpenCV for computer vision
+opencv-python==4.8.1.78
+
+# YOLOv8 for object detection
+ultralytics==8.0.196
+
+# Additional dependencies
+numpy==1.24.3
+requests==2.31.0
+Pillow==10.0.1
+
+# Optional: For better performance
+# torch==2.0.1
+# torchvision==0.15.2
