@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function LiveFeedPage() {
+  const [selectedCamera, setSelectedCamera] = useState('FF-001');
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [objectCount, setObjectCount] = useState(3);
@@ -13,6 +14,17 @@ export default function LiveFeedPage() {
     { id: 3, type: 'Obstacle', distance: '1.8m', confidence: 92 }
   ]);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Simulated camera data for mesh network
+  const cameras = [
+    { id: 'FF-001', name: 'Firefighter Alpha', status: 'online', battery: 85, signal: 'strong', resolution: '1080p', fps: 30 },
+    { id: 'FF-002', name: 'Firefighter Beta', status: 'online', battery: 72, signal: 'good', resolution: '720p', fps: 30 },
+    { id: 'FF-003', name: 'Firefighter Gamma', status: 'offline', battery: 0, signal: 'none', resolution: 'N/A', fps: 0 },
+    { id: 'FF-004', name: 'Firefighter Delta', status: 'online', battery: 91, signal: 'strong', resolution: '1080p', fps: 60 },
+    { id: 'FF-005', name: 'Firefighter Echo', status: 'online', battery: 68, signal: 'weak', resolution: '480p', fps: 15 }
+  ];
+
+  const selectedCameraData = cameras.find(cam => cam.id === selectedCamera);
 
   // Simulate audio level changes
   useEffect(() => {
@@ -27,26 +39,36 @@ export default function LiveFeedPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 p-4 h-[calc(100vh-80px)]">
+    <div className="min-h-screen bg-gray-950 text-white">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-6 h-[calc(100vh-80px)]">
         
         {/* Main Video Feed - Takes up 3 columns */}
-        <div className="lg:col-span-3 bg-gray-800 rounded-lg p-4 relative">
+        <div className="lg:col-span-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 relative">
           <div className="w-full h-full bg-gray-700 rounded-lg flex items-center justify-center relative overflow-hidden">
-            {/* Video Feed Placeholder */}
-            <div className="text-center text-gray-300">
-              <div className="text-6xl mb-4">📹</div>
-              <p className="text-lg">Live Camera Feed</p>
-              <p className="text-sm text-gray-400 mt-2">High-resolution video from helmet camera</p>
-            </div>
-            
-            {/* HUD Overlays */}
-            <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded text-sm font-bold">
-              {isRecording ? 'REC' : 'LIVE'}
-            </div>
-            <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded text-sm">
-              HD 1080p
-            </div>
+            {selectedCameraData?.status === 'online' ? (
+              <>
+                {/* Video Feed Placeholder */}
+                <div className="text-center text-gray-300">
+                  <div className="text-6xl mb-4">📹</div>
+                  <p className="text-lg">{selectedCameraData.name}</p>
+                  <p className="text-sm text-gray-400 mt-2">Live video from {selectedCameraData.id}</p>
+                </div>
+                
+                {/* HUD Overlays */}
+                <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded text-sm font-bold">
+                  {isRecording ? 'REC' : 'LIVE'}
+                </div>
+                <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded text-sm">
+                  {selectedCameraData.resolution}
+                </div>
+              </>
+            ) : (
+              <div className="text-center text-gray-500">
+                <div className="text-6xl mb-4">📹</div>
+                <p className="text-lg">Camera Offline</p>
+                <p className="text-sm text-gray-400 mt-2">No signal from {selectedCameraData?.id}</p>
+              </div>
+            )}
             
             {/* Object Detection Overlays */}
             <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded">
@@ -85,56 +107,88 @@ export default function LiveFeedPage() {
         </div>
 
         {/* Control Panel - Takes up 1 column */}
-        <div className="lg:col-span-1 bg-gray-800 rounded-lg p-4 flex flex-col space-y-4">
+        <div className="lg:col-span-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 flex flex-col space-y-6">
+          
+          {/* Camera Selector */}
+          <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <h3 className="text-sm font-semibold mb-3 text-white">Camera Selection</h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {cameras.map((camera) => (
+                <button
+                  key={camera.id}
+                  onClick={() => setSelectedCamera(camera.id)}
+                  className={`w-full p-2 rounded-lg text-left transition-all duration-200 ${
+                    selectedCamera === camera.id
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium">{camera.name}</div>
+                      <div className="text-xs opacity-75">{camera.id}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        camera.status === 'online' ? 'bg-emerald-500' : 'bg-red-500'
+                      }`}></div>
+                      <div className="text-xs">{camera.battery}%</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
           
           {/* Recording Controls */}
-          <div className="bg-gray-700 p-3 rounded">
-            <h3 className="text-sm font-semibold mb-2">Recording Controls</h3>
+          <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <h3 className="text-sm font-semibold mb-3 text-white">Recording Controls</h3>
             <button
               onClick={toggleRecording}
-              className={`w-full py-2 px-4 rounded font-semibold ${
+              disabled={selectedCameraData?.status !== 'online'}
+              className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
                 isRecording 
-                  ? 'bg-red-600 hover:bg-red-700' 
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
+                  ? 'bg-red-500 hover:bg-red-600' 
+                  : 'bg-emerald-500 hover:bg-emerald-600'
+              } ${selectedCameraData?.status !== 'online' ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isRecording ? 'Stop Recording' : 'Start Recording'}
             </button>
             <div className="mt-2 text-xs text-gray-300">
-              Status: {isRecording ? 'Recording...' : 'Ready'}
+              Status: {selectedCameraData?.status !== 'online' ? 'Camera Offline' : (isRecording ? 'Recording...' : 'Ready')}
             </div>
           </div>
 
           {/* Camera Settings */}
-          <div className="bg-gray-700 p-3 rounded">
-            <h3 className="text-sm font-semibold mb-2">Camera Settings</h3>
-            <div className="space-y-2 text-xs">
+          <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <h3 className="text-sm font-semibold mb-3 text-white">Camera Settings</h3>
+            <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Resolution:</span>
-                <span className="text-green-400">1080p</span>
+                <span className="text-gray-400">Resolution:</span>
+                <span className="text-white">{selectedCameraData?.resolution || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
-                <span>Frame Rate:</span>
-                <span className="text-green-400">30 FPS</span>
+                <span className="text-gray-400">Frame Rate:</span>
+                <span className="text-white">{selectedCameraData?.fps || 0} FPS</span>
               </div>
               <div className="flex justify-between">
-                <span>Night Vision:</span>
-                <span className="text-green-400">ON</span>
+                <span className="text-gray-400">Night Vision:</span>
+                <span className="text-emerald-400">ON</span>
               </div>
               <div className="flex justify-between">
-                <span>Stabilization:</span>
-                <span className="text-green-400">Active</span>
+                <span className="text-gray-400">Stabilization:</span>
+                <span className="text-emerald-400">Active</span>
               </div>
             </div>
           </div>
 
           {/* Object Detection */}
-          <div className="bg-gray-700 p-3 rounded">
-            <h3 className="text-sm font-semibold mb-2">Object Detection</h3>
+          <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <h3 className="text-sm font-semibold mb-3 text-white">Object Detection</h3>
             <div className="space-y-2">
               {detectedObjects.map((obj) => (
-                <div key={obj.id} className="bg-gray-600 p-2 rounded text-xs">
-                  <div className="font-semibold">{obj.type}</div>
+                <div key={obj.id} className="bg-white/10 p-3 rounded-lg text-sm">
+                  <div className="font-semibold text-white">{obj.type}</div>
                   <div className="text-gray-300">Distance: {obj.distance}</div>
                   <div className="text-gray-300">Confidence: {obj.confidence}%</div>
                 </div>
@@ -143,24 +197,36 @@ export default function LiveFeedPage() {
           </div>
 
           {/* System Status */}
-          <div className="bg-gray-700 p-3 rounded">
-            <h3 className="text-sm font-semibold mb-2">System Status</h3>
-            <div className="space-y-1 text-xs">
+          <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <h3 className="text-sm font-semibold mb-3 text-white">System Status</h3>
+            <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Camera:</span>
-                <span className="text-green-400">Online</span>
+                <span className="text-gray-400">Camera:</span>
+                <span className={selectedCameraData?.status === 'online' ? 'text-emerald-400' : 'text-red-400'}>
+                  {selectedCameraData?.status === 'online' ? 'Online' : 'Offline'}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span>Audio:</span>
-                <span className="text-green-400">Recording</span>
+                <span className="text-gray-400">Audio:</span>
+                <span className={selectedCameraData?.status === 'online' ? 'text-emerald-400' : 'text-red-400'}>
+                  {selectedCameraData?.status === 'online' ? 'Recording' : 'No Signal'}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span>LiDAR:</span>
-                <span className="text-green-400">Active</span>
+                <span className="text-gray-400">LiDAR:</span>
+                <span className={selectedCameraData?.status === 'online' ? 'text-emerald-400' : 'text-red-400'}>
+                  {selectedCameraData?.status === 'online' ? 'Active' : 'Offline'}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span>Battery:</span>
-                <span className="text-green-400">87%</span>
+                <span className="text-gray-400">Battery:</span>
+                <span className={selectedCameraData?.battery && selectedCameraData.battery > 20 ? 'text-emerald-400' : 'text-red-400'}>
+                  {selectedCameraData?.battery || 0}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Signal:</span>
+                <span className="text-white capitalize">{selectedCameraData?.signal || 'none'}</span>
               </div>
             </div>
           </div>

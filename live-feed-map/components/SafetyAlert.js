@@ -210,42 +210,51 @@ const SafetyAlert = ({ firefighterId = 'FF-001', onAlert, onOverride }) => {
   };
 
   return (
-    <div className="bg-gradient-to-b from-slate-700 to-slate-800 p-4 rounded-lg border border-orange-500/30 shadow-lg">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${
-            alertStatus === 'normal' ? 'bg-green-400' :
-            alertStatus === 'warning' ? 'bg-yellow-400 animate-pulse' :
-            alertStatus === 'alert' ? 'bg-red-400 animate-pulse' :
-            'bg-blue-400 animate-pulse'
-          }`}></div>
-          <h3 className="text-sm font-bold text-orange-400 tracking-wide">SAFETY MONITOR</h3>
+    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-xl">
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          <div className={`w-3 h-3 rounded-full ${
+            alertStatus === 'normal' ? 'bg-emerald-500' :
+            alertStatus === 'warning' ? 'bg-amber-500' :
+            alertStatus === 'alert' ? 'bg-red-500' :
+            'bg-blue-500'
+          } ${alertStatus !== 'normal' ? 'animate-pulse' : ''}`}></div>
+          <h3 className="text-lg font-semibold text-white">Safety Monitor</h3>
         </div>
-        <div className={`text-xs font-bold ${getStatusColor()}`}>
+        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+          alertStatus === 'normal' ? 'bg-emerald-500/20 text-emerald-400' :
+          alertStatus === 'warning' ? 'bg-amber-500/20 text-amber-400' :
+          alertStatus === 'alert' ? 'bg-red-500/20 text-red-400' :
+          'bg-blue-500/20 text-blue-400'
+        }`}>
           {getStatusText()}
         </div>
       </div>
 
       {/* Firefighter ID and Status */}
-      <div className="mb-4 p-3 bg-slate-600/50 rounded-lg border border-slate-500/50">
-        <div className="text-xs text-slate-300 mb-1">FIREFIGHTER ID</div>
-        <div className="text-sm font-mono text-white font-bold">{firefighterId}</div>
-        <div className="text-xs text-slate-400 mt-1">
+      <div className="mb-6 p-4 bg-white/5 rounded-lg border border-white/10">
+        <div className="text-xs text-gray-400 mb-2 font-medium">Firefighter ID</div>
+        <div className="text-lg font-mono text-white font-semibold mb-2">{firefighterId}</div>
+        <div className="text-sm text-gray-300">
           Last Activity: {Math.floor(inactivityTimer / 1000)}s ago
         </div>
       </div>
 
       {/* Manual Check-in Button */}
-      <div className="mb-4">
+      <div className="mb-6">
         <button
           onClick={handleManualCheckIn}
           disabled={alertStatus === 'override'}
-          className={`w-full py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200 ${getButtonColor()} disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`w-full py-4 px-6 rounded-xl text-base font-semibold transition-all duration-200 ${
+            alertStatus === 'override' 
+              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' 
+              : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          {alertStatus === 'override' ? '✅ CHECK-IN CONFIRMED' : '🟢 MANUAL CHECK-IN'}
+          {alertStatus === 'override' ? '✓ Check-in Confirmed' : 'Manual Check-in'}
         </button>
         {alertStatus === 'override' && (
-          <div className="text-xs text-blue-400 text-center mt-2 font-semibold">
+          <div className="text-sm text-blue-400 text-center mt-3 font-medium">
             Override logged - Timer reset
           </div>
         )}
@@ -253,77 +262,83 @@ const SafetyAlert = ({ firefighterId = 'FF-001', onAlert, onOverride }) => {
 
       {/* Alert Status Display */}
       {isActive && alertStatus === 'alert' && (
-        <div className="mb-4 p-3 bg-red-600/20 border border-red-500/50 rounded-lg">
-          <div className="text-xs text-red-300 font-bold mb-1">AUTOMATIC ALERT TRIGGERED</div>
-          <div className="text-sm text-red-200">
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+          <div className="text-sm text-red-400 font-semibold mb-2">⚠️ Automatic Alert Triggered</div>
+          <div className="text-base text-red-300 mb-2">
             No movement detected for {Math.floor(inactivityTimer / 1000)} seconds
           </div>
-          <div className="text-xs text-red-300 mt-1">
-            Press "MANUAL CHECK-IN" if firefighter is safe
+          <div className="text-sm text-red-400">
+            Press "Manual Check-in" if firefighter is safe
           </div>
         </div>
       )}
 
       {/* Override Statistics */}
-      <div className="text-xs text-slate-400 space-y-1">
-        <div>Manual Overrides: {overrideCount}</div>
+      <div className="text-sm text-gray-400 space-y-2 mb-6">
+        <div className="flex justify-between">
+          <span>Manual Overrides:</span>
+          <span className="text-white font-medium">{overrideCount}</span>
+        </div>
         {lastOverride && (
-          <div>Last Override: {new Date(lastOverride).toLocaleTimeString()}</div>
+          <div className="flex justify-between">
+            <span>Last Override:</span>
+            <span className="text-white font-medium">{new Date(lastOverride).toLocaleTimeString()}</span>
+          </div>
         )}
       </div>
 
       {/* Test Mode Controls */}
-      <div className="mt-4 p-3 bg-slate-600/30 rounded-lg border border-slate-500/30">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-xs text-slate-300 font-semibold">TEST MODE</div>
+      <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm text-gray-300 font-medium">Test Mode</div>
           <button
             onClick={handleTestMode}
-            className={`px-2 py-1 rounded text-xs font-bold transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               isTestMode 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                : 'bg-slate-600 hover:bg-slate-700 text-slate-300'
+                ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+                : 'bg-white/10 hover:bg-white/20 text-gray-300'
             }`}
           >
-            {isTestMode ? 'EXIT TEST' : 'TEST MODE'}
+            {isTestMode ? 'Exit Test' : 'Test Mode'}
           </button>
         </div>
         
         {isTestMode && (
-          <div className="space-y-2">
-            <div className="text-xs text-slate-400 mb-2">Simulate Emergency Scenarios:</div>
-            <div className="grid grid-cols-1 gap-1">
+          <div className="space-y-4">
+            <div className="text-sm text-gray-400 mb-3">Simulate Emergency Scenarios:</div>
+            <div className="grid grid-cols-1 gap-2">
               <button
                 onClick={() => handleTestScenario('normal')}
-                className={`px-2 py-1 rounded text-xs font-bold transition-all ${
+                className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                   testScenario === 'normal' 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                    ? 'bg-emerald-500 text-white' 
+                    : 'bg-white/10 hover:bg-white/20 text-gray-300'
                 }`}
               >
-                🟢 Normal Operation
+                Normal Operation
               </button>
               <button
                 onClick={() => handleTestScenario('stuck')}
-                className={`px-2 py-1 rounded text-xs font-bold transition-all ${
+                className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                   testScenario === 'stuck' 
-                    ? 'bg-yellow-600 text-white' 
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                    ? 'bg-amber-500 text-white' 
+                    : 'bg-white/10 hover:bg-white/20 text-gray-300'
                 }`}
               >
-                🟡 Firefighter Stuck (Warning)
+                Firefighter Stuck (Warning)
               </button>
               <button
                 onClick={() => handleTestScenario('passed_out')}
-                className={`px-2 py-1 rounded text-xs font-bold transition-all ${
+                className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                   testScenario === 'passed_out' 
-                    ? 'bg-red-600 text-white' 
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                    ? 'bg-red-500 text-white' 
+                    : 'bg-white/10 hover:bg-white/20 text-gray-300'
                 }`}
               >
-                🔴 Firefighter Passed Out (Alert)
+                Firefighter Passed Out (Alert)
               </button>
             </div>
-            <div className="text-xs text-slate-500 mt-2">
+            <div className="text-sm text-gray-500 mt-3 p-3 bg-white/5 rounded-lg">
               {testScenario === 'normal' && 'Simulating normal movement patterns'}
               {testScenario === 'stuck' && 'Simulating infrequent movement (firefighter stuck)'}
               {testScenario === 'passed_out' && 'Simulating no movement (firefighter unconscious)'}
@@ -333,24 +348,24 @@ const SafetyAlert = ({ firefighterId = 'FF-001', onAlert, onOverride }) => {
       </div>
 
       {/* Status Indicators */}
-      <div className="flex justify-center mt-4">
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-          alertStatus === 'normal' ? 'bg-green-500/20 border-green-500/50 text-green-400' :
-          alertStatus === 'warning' ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400' :
-          alertStatus === 'alert' ? 'bg-red-500/20 border-red-500/50 text-red-400' :
-          'bg-blue-500/20 border-blue-500/50 text-blue-400'
+      <div className="flex justify-center mt-6">
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl ${
+          alertStatus === 'normal' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
+          alertStatus === 'warning' ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
+          alertStatus === 'alert' ? 'bg-red-500/10 border border-red-500/30 text-red-400' :
+          'bg-blue-500/10 border border-blue-500/30 text-blue-400'
         }`}>
-          <div className={`w-2 h-2 rounded-full ${
-            alertStatus === 'normal' ? 'bg-green-400' :
-            alertStatus === 'warning' ? 'bg-yellow-400 animate-pulse' :
-            alertStatus === 'alert' ? 'bg-red-400 animate-pulse' :
-            'bg-blue-400 animate-pulse'
-          }`}></div>
-          <span className="font-bold tracking-wide">
-            {alertStatus === 'normal' ? 'MONITORING' :
-             alertStatus === 'warning' ? 'WARNING' :
-             alertStatus === 'alert' ? 'ALERT' :
-             'OVERRIDE'}
+          <div className={`w-3 h-3 rounded-full ${
+            alertStatus === 'normal' ? 'bg-emerald-500' :
+            alertStatus === 'warning' ? 'bg-amber-500' :
+            alertStatus === 'alert' ? 'bg-red-500' :
+            'bg-blue-500'
+          } ${alertStatus !== 'normal' ? 'animate-pulse' : ''}`}></div>
+          <span className="font-semibold text-base">
+            {alertStatus === 'normal' ? 'Monitoring' :
+             alertStatus === 'warning' ? 'Warning' :
+             alertStatus === 'alert' ? 'Alert' :
+             'Override'}
           </span>
         </div>
       </div>
