@@ -2,26 +2,27 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import LiveVideoStream from '../../../components/LiveVideoStream';
 
 export default function LiveFeedPage() {
   const [selectedCamera, setSelectedCamera] = useState('FF-001');
   const [isRecording, setIsRecording] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [objectCount, setObjectCount] = useState(3);
-  const [detectedObjects, setDetectedObjects] = useState([
-    { id: 1, type: 'Door', distance: '2.3m', confidence: 95 },
-    { id: 2, type: 'Window', distance: '4.1m', confidence: 87 },
-    { id: 3, type: 'Obstacle', distance: '1.8m', confidence: 92 }
-  ]);
+  const [objectCount, setObjectCount] = useState(0);
+  const [poseCount, setPoseCount] = useState(0);
+  const [detectedObjects, setDetectedObjects] = useState([]);
+  const [detectedPoses, setDetectedPoses] = useState([]);
+  const [detectionData, setDetectionData] = useState(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Simulated camera data for mesh network
   const cameras = [
-    { id: 'FF-001', name: 'Firefighter Alpha', status: 'online', battery: 85, signal: 'strong', resolution: '1080p', fps: 30 },
-    { id: 'FF-002', name: 'Firefighter Beta', status: 'online', battery: 72, signal: 'good', resolution: '720p', fps: 30 },
-    { id: 'FF-003', name: 'Firefighter Gamma', status: 'offline', battery: 0, signal: 'none', resolution: 'N/A', fps: 0 },
-    { id: 'FF-004', name: 'Firefighter Delta', status: 'online', battery: 91, signal: 'strong', resolution: '1080p', fps: 60 },
-    { id: 'FF-005', name: 'Firefighter Echo', status: 'online', battery: 68, signal: 'weak', resolution: '480p', fps: 15 }
+    { id: 'FF-001', name: 'Firefighter Alpha (Mac Camera)', status: 'online', battery: 85, signal: 'strong', resolution: '1080p', fps: 30, type: 'mac-camera' },
+    { id: 'FF-002', name: 'Firefighter Beta', status: 'online', battery: 72, signal: 'good', resolution: '720p', fps: 30, type: 'helmet' },
+    { id: 'FF-003', name: 'Firefighter Gamma', status: 'offline', battery: 0, signal: 'none', resolution: 'N/A', fps: 0, type: 'helmet' },
+    { id: 'FF-004', name: 'Firefighter Delta', status: 'online', battery: 91, signal: 'strong', resolution: '1080p', fps: 60, type: 'helmet' },
+    { id: 'FF-005', name: 'Firefighter Echo', status: 'online', battery: 68, signal: 'weak', resolution: '480p', fps: 15, type: 'helmet' }
   ];
 
   const selectedCameraData = cameras.find(cam => cam.id === selectedCamera);
@@ -34,8 +35,64 @@ export default function LiveFeedPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Handle detection updates from video stream
+  const handleDetectionUpdate = (data) => {
+    setDetectedObjects(data.detections || []);
+    setDetectedPoses(data.poses || []);
+    setObjectCount(data.detections.length);
+    setPoseCount(data.poses.length);
+    setDetectionData({
+      timestamp: data.timestamp,
+      object_detections: data.detections,
+      pose_detections: data.poses,
+      object_count: data.detections.length,
+      pose_count: data.poses.length
+    });
+  };
+
+  // Fetch detection data for non-Mac cameras
+  useEffect(() => {
+    const fetchDetectionData = async () => {
+      try {
+        const response = await fetch(`/api/object-detection?camera_id=${selectedCamera}&limit=1`);
+        const data = await response.json();
+        if (data.success && data.results.length > 0) {
+          const latest = data.results[0];
+          setDetectionData(latest);
+          setObjectCount(latest.object_count || 0);
+          setPoseCount(latest.pose_count || 0);
+          setDetectedObjects(latest.object_detections || []);
+          setDetectedPoses(latest.pose_detections || []);
+        }
+      } catch (error) {
+        console.error('Error fetching detection data:', error);
+      }
+    };
+
+    // Only fetch for non-Mac cameras (they use WebSocket)
+    if (isDetecting && selectedCamera !== 'FF-001') {
+      const interval = setInterval(fetchDetectionData, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedCamera, isDetecting]);
+
   const toggleRecording = () => {
     setIsRecording(!isRecording);
+  };
+
+  const startDetection = async () => {
+    setIsDetecting(true);
+    // The Mac camera detector will start automatically when this state changes
+    console.log('Starting detection for Mac camera...');
+  };
+
+  const stopDetection = () => {
+    setIsDetecting(false);
+    setObjectCount(0);
+    setPoseCount(0);
+    setDetectedObjects([]);
+    setDetectedPoses([]);
+    setDetectionData(null);
   };
 
   return (
@@ -44,66 +101,51 @@ export default function LiveFeedPage() {
         
         {/* Main Video Feed - Takes up 3 columns */}
         <div className="lg:col-span-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 relative">
-          <div className="w-full h-full bg-gray-700 rounded-lg flex items-center justify-center relative overflow-hidden">
-            {selectedCameraData?.status === 'online' ? (
-              <>
-                {/* Video Feed Placeholder */}
-                <div className="text-center text-gray-300">
-                  <div className="text-6xl mb-4">📹</div>
-                  <p className="text-lg">{selectedCameraData.name}</p>
-                  <p className="text-sm text-gray-400 mt-2">Live video from {selectedCameraData.id}</p>
+          {selectedCameraData?.status === 'online' ? (
+            <>
+              {/* Live Video Stream */}
+              <LiveVideoStream 
+                cameraId={selectedCamera}
+                isDetecting={isDetecting}
+                onDetectionUpdate={handleDetectionUpdate}
+              />
+              
+              {/* HUD Overlays */}
+              <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded text-sm font-bold z-20">
+                {isRecording ? 'REC' : 'LIVE'}
+              </div>
+              <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded text-sm z-20">
+                {selectedCameraData.resolution}
+              </div>
+              
+              {/* Detection Overlays */}
+              <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded z-20">
+                <div className="text-sm font-semibold">Objects: {objectCount} | Poses: {poseCount}</div>
+                <div className="text-xs">
+                  {detectedObjects.length > 0 ? `Nearest: ${detectedObjects[0]?.class_name || 'Unknown'}` : 'No objects detected'}
                 </div>
-                
-                {/* HUD Overlays */}
-                <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded text-sm font-bold">
-                  {isRecording ? 'REC' : 'LIVE'}
+              </div>
+              
+              {/* Audio Level Indicator */}
+              <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded z-20">
+                <div className="text-sm font-semibold">Audio Level</div>
+                <div className="w-20 h-2 bg-gray-600 rounded mt-1">
+                  <div 
+                    className="h-full bg-green-500 rounded transition-all duration-100"
+                    style={{ width: `${audioLevel}%` }}
+                  ></div>
                 </div>
-                <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded text-sm">
-                  {selectedCameraData.resolution}
-                </div>
-              </>
-            ) : (
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-full bg-gray-700 rounded-lg flex items-center justify-center">
               <div className="text-center text-gray-500">
                 <div className="text-6xl mb-4">📹</div>
                 <p className="text-lg">Camera Offline</p>
                 <p className="text-sm text-gray-400 mt-2">No signal from {selectedCameraData?.id}</p>
               </div>
-            )}
-            
-            {/* Object Detection Overlays */}
-            <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded">
-              <div className="text-sm font-semibold">Objects Detected: {objectCount}</div>
-              <div className="text-xs">Nearest: 1.8m</div>
             </div>
-            
-            {/* Audio Level Indicator */}
-            <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded">
-              <div className="text-sm font-semibold">Audio Level</div>
-              <div className="w-20 h-2 bg-gray-600 rounded mt-1">
-                <div 
-                  className="h-full bg-green-500 rounded transition-all duration-100"
-                  style={{ width: `${audioLevel}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Simulated Object Detection Boxes */}
-            <div className="absolute top-1/4 left-1/4 w-16 h-16 border-2 border-red-500 rounded">
-              <div className="absolute -top-6 left-0 text-xs bg-red-500 text-white px-1 rounded">
-                Door 95%
-              </div>
-            </div>
-            <div className="absolute top-1/3 right-1/3 w-12 h-12 border-2 border-yellow-500 rounded">
-              <div className="absolute -top-6 left-0 text-xs bg-yellow-500 text-black px-1 rounded">
-                Window 87%
-              </div>
-            </div>
-            <div className="absolute bottom-1/3 left-1/3 w-14 h-14 border-2 border-orange-500 rounded">
-              <div className="absolute -top-6 left-0 text-xs bg-orange-500 text-white px-1 rounded">
-                Obstacle 92%
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Control Panel - Takes up 1 column */}
@@ -140,23 +182,44 @@ export default function LiveFeedPage() {
             </div>
           </div>
           
-          {/* Recording Controls */}
+          {/* Detection Controls */}
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
-            <h3 className="text-sm font-semibold mb-3 text-white">Recording Controls</h3>
-            <button
-              onClick={toggleRecording}
-              disabled={selectedCameraData?.status !== 'online'}
-              className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                isRecording 
-                  ? 'bg-red-500 hover:bg-red-600' 
-                  : 'bg-emerald-500 hover:bg-emerald-600'
-              } ${selectedCameraData?.status !== 'online' ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isRecording ? 'Stop Recording' : 'Start Recording'}
-            </button>
-            <div className="mt-2 text-xs text-gray-300">
-              Status: {selectedCameraData?.status !== 'online' ? 'Camera Offline' : (isRecording ? 'Recording...' : 'Ready')}
-            </div>
+            <h3 className="text-sm font-semibold mb-3 text-white">Detection Controls</h3>
+            {selectedCameraData?.type === 'mac-camera' ? (
+              <div className="space-y-2">
+                <button
+                  onClick={isDetecting ? stopDetection : startDetection}
+                  disabled={selectedCameraData?.status !== 'online'}
+                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                    isDetecting 
+                      ? 'bg-red-500 hover:bg-red-600' 
+                      : 'bg-blue-500 hover:bg-blue-600'
+                  } ${selectedCameraData?.status !== 'online' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isDetecting ? 'Stop Detection' : 'Start Detection'}
+                </button>
+                <div className="mt-2 text-xs text-gray-300">
+                  Status: {selectedCameraData?.status !== 'online' ? 'Camera Offline' : (isDetecting ? 'Detecting...' : 'Ready')}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <button
+                  onClick={toggleRecording}
+                  disabled={selectedCameraData?.status !== 'online'}
+                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                    isRecording 
+                      ? 'bg-red-500 hover:bg-red-600' 
+                      : 'bg-emerald-500 hover:bg-emerald-600'
+                  } ${selectedCameraData?.status !== 'online' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isRecording ? 'Stop Recording' : 'Start Recording'}
+                </button>
+                <div className="mt-2 text-xs text-gray-300">
+                  Status: {selectedCameraData?.status !== 'online' ? 'Camera Offline' : (isRecording ? 'Recording...' : 'Ready')}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Camera Settings */}
@@ -182,17 +245,29 @@ export default function LiveFeedPage() {
             </div>
           </div>
 
-          {/* Object Detection */}
+          {/* Detection Results */}
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
-            <h3 className="text-sm font-semibold mb-3 text-white">Object Detection</h3>
-            <div className="space-y-2">
-              {detectedObjects.map((obj) => (
-                <div key={obj.id} className="bg-white/10 p-3 rounded-lg text-sm">
-                  <div className="font-semibold text-white">{obj.type}</div>
-                  <div className="text-gray-300">Distance: {obj.distance}</div>
-                  <div className="text-gray-300">Confidence: {obj.confidence}%</div>
+            <h3 className="text-sm font-semibold mb-3 text-white">Detection Results</h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {detectedObjects.map((obj, index) => (
+                <div key={`obj-${index}`} className="bg-white/10 p-2 rounded-lg text-xs">
+                  <div className="font-semibold text-white">{obj.class_name}</div>
+                  <div className="text-gray-300">Confidence: {Math.round(obj.confidence * 100)}%</div>
+                  <div className="text-gray-300">Priority: {obj.priority}</div>
                 </div>
               ))}
+              {detectedPoses.map((pose, index) => (
+                <div key={`pose-${index}`} className="bg-white/10 p-2 rounded-lg text-xs">
+                  <div className="font-semibold text-white">{pose.action}</div>
+                  <div className="text-gray-300">Confidence: {Math.round(pose.confidence * 100)}%</div>
+                  <div className="text-gray-300">Priority: {pose.priority}</div>
+                </div>
+              ))}
+              {detectedObjects.length === 0 && detectedPoses.length === 0 && (
+                <div className="text-gray-400 text-xs text-center py-4">
+                  {isDetecting ? 'No detections yet...' : 'Start detection to see results'}
+                </div>
+              )}
             </div>
           </div>
 
@@ -213,9 +288,9 @@ export default function LiveFeedPage() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">LiDAR:</span>
-                <span className={selectedCameraData?.status === 'online' ? 'text-emerald-400' : 'text-red-400'}>
-                  {selectedCameraData?.status === 'online' ? 'Active' : 'Offline'}
+                <span className="text-gray-400">Detection:</span>
+                <span className={isDetecting ? 'text-emerald-400' : 'text-red-400'}>
+                  {isDetecting ? 'Active' : 'Offline'}
                 </span>
               </div>
               <div className="flex justify-between">
