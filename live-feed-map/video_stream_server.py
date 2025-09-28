@@ -162,6 +162,10 @@ class VideoStreamServer:
 
     def classify_gesture(self, landmarks, frame_shape):
         """Classify hand gestures based on landmarks and return proper gesture object"""
+        gesture = None
+        bbox = None
+        confidence = 0.85  # Default confidence for recognized gestures
+
         # Extract key points (landmarks) from the hand
         thumb_tip = landmarks.landmark[self.mp_hands.HandLandmark.THUMB_TIP]
         index_tip = landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_TIP]
@@ -189,12 +193,11 @@ class VideoStreamServer:
 
         gesture_name = None
         gesture_meaning = None
-        confidence = 0.85  # Realistic confidence score
         
         # Gesture Classification based on hand landmarks
         try:
-            # 1. Peace (V) - Room clear
-            if (thumb_tip.y < index_tip.y and abs(thumb_tip.x - index_tip.x) > 0.1):
+            # 1. Peace (V) - Room clear (Thumb down, Index and middle finger forming a V)
+            if (thumb_tip.y < index_tip.y and abs(thumb_tip.x - index_tip.x) > 0.1 and abs(thumb_tip.x - index_tip.x) < 0.2):
                 gesture_name = "peace"
                 gesture_meaning = "room clear"
 
@@ -208,7 +211,7 @@ class VideoStreamServer:
                 gesture_name = "phone"
                 gesture_meaning = "need help"
 
-            # 4. Thumb up - Affirmative
+            # 4. Thumb up - Affirmative (Thumb pointing up)
             elif (thumb_tip.y < wrist.y and abs(thumb_tip.x - wrist.x) > 0.1):
                 gesture_name = "thumbs_up"
                 gesture_meaning = "affirmative"
@@ -218,19 +221,14 @@ class VideoStreamServer:
                 gesture_name = "thumbs_down"
                 gesture_meaning = "no/failure"
 
-            # 6. Open hand - Stop/freeze
-            elif (abs(index_tip.y - middle_tip.y) < 0.05 and abs(middle_tip.y - ring_tip.y) < 0.05 and abs(ring_tip.y - pinky_tip.y) < 0.05):
-                gesture_name = "open_hand"
-                gesture_meaning = "stop/freeze"
-
-            # 7. Pointer finger up - Emergency
+            # 6. Pointer finger up - Emergency
             elif (index_tip.y < thumb_tip.y and abs(index_tip.x - thumb_tip.x) < 0.05):
                 gesture_name = "point_up"
                 gesture_meaning = "emergency"
 
-            # 8. Flat hand sideways - Let's move
+            # 7. Flat Hand (Sideways) - Let's move
             elif (abs(index_tip.x - pinky_tip.x) > 0.15 and abs(index_tip.y - pinky_tip.y) < 0.1):
-                gesture_name = "move"
+                gesture_name = "flat_hand"
                 gesture_meaning = "let's move"
 
         except Exception as e:
@@ -248,6 +246,8 @@ class VideoStreamServer:
             }
         
         return None
+
+
 
 
     def draw_detections(self, frame, detections, gestures):

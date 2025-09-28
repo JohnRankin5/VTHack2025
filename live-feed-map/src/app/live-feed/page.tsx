@@ -20,6 +20,10 @@ export default function LiveFeedPage() {
   const [showGestureDetection, setShowGestureDetection] = useState(true);
   const [showHUDOverlays, setShowHUDOverlays] = useState(true);
   const [forceUpdate, setForceUpdate] = useState(0);
+  
+  // Gesture guide visibility
+  const [showGestureGuide, setShowGestureGuide] = useState(false);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Simulated camera data for mesh network
@@ -410,6 +414,103 @@ export default function LiveFeedPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Gesture Guide */}
+          <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white">🤚 Gesture Commands</h3>
+              <button
+                onClick={() => setShowGestureGuide(!showGestureGuide)}
+                className="text-xs px-2 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors"
+              >
+                {showGestureGuide ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            
+            {showGestureGuide && (
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {/* Peace (V) */}
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">✌️</span>
+                    <span className="text-sm font-semibold text-white">Peace (V)</span>
+                  </div>
+                  <div className="text-xs text-emerald-400 mb-1">→ Room clear</div>
+                  <div className="text-xs text-gray-400">Index and middle finger extended in V shape</div>
+                </div>
+
+                {/* OK (Circle) */}
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">👌</span>
+                    <span className="text-sm font-semibold text-white">OK (Circle)</span>
+                  </div>
+                  <div className="text-xs text-blue-400 mb-1">→ Detected person</div>
+                  <div className="text-xs text-gray-400">Thumb and index finger form circle</div>
+                </div>
+
+                {/* Phone */}
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">🤙</span>
+                    <span className="text-sm font-semibold text-white">Phone</span>
+                  </div>
+                  <div className="text-xs text-red-400 mb-1">→ Need help</div>
+                  <div className="text-xs text-gray-400">Thumb and pinky extended, spread apart</div>
+                </div>
+
+                {/* Thumbs Up */}
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">👍</span>
+                    <span className="text-sm font-semibold text-white">Thumbs Up</span>
+                  </div>
+                  <div className="text-xs text-emerald-400 mb-1">→ Affirmative</div>
+                  <div className="text-xs text-gray-400">Thumb pointing up from wrist</div>
+                </div>
+
+                {/* Thumbs Down */}
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">👎</span>
+                    <span className="text-sm font-semibold text-white">Thumbs Down</span>
+                  </div>
+                  <div className="text-xs text-red-400 mb-1">→ No/failure</div>
+                  <div className="text-xs text-gray-400">Thumb pointing down from wrist</div>
+                </div>
+
+                {/* Point Up */}
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">☝️</span>
+                    <span className="text-sm font-semibold text-white">Point Up</span>
+                  </div>
+                  <div className="text-xs text-red-500 mb-1">→ Emergency</div>
+                  <div className="text-xs text-gray-400">Index finger pointing up</div>
+                </div>
+
+                {/* Flat Hand (Sideways) */}
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">🫱</span>
+                    <span className="text-sm font-semibold text-white">Flat Hand (Sideways)</span>
+                  </div>
+                  <div className="text-xs text-cyan-400 mb-1">→ Let's move</div>
+                  <div className="text-xs text-gray-400">Hand flat, fingers spread horizontally</div>
+                </div>
+
+                <div className="mt-3 p-2 bg-purple-500/20 rounded border border-purple-500/30">
+                  <div className="text-xs text-purple-300 font-semibold mb-1">💡 Pro Tips:</div>
+                  <div className="text-xs text-gray-300 space-y-1">
+                    <div>• Hold gestures for 1-2 seconds for detection</div>
+                    <div>• Keep hand visible in camera frame</div>
+                    <div>• Use clear, deliberate movements</div>
+                    <div>• Emergency gestures have highest priority</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* System Status */}
