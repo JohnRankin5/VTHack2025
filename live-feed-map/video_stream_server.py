@@ -28,6 +28,14 @@ class VideoStreamServer:
         self.hands = self.mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.5)
         self.mp_drawing = mp.solutions.drawing_utils  # For drawing landmarks
         self.coco_classes = self.load_coco_classes()
+        
+        # Room classification system
+        self.objects_in_room = set()  # Set to store unique objects
+        self.object_confidence_threshold = 0.5  # Higher threshold for room classification
+        self.room_classification = "Unknown"
+        self.room_confidence = 0.0
+        self.classification_update_counter = 0
+        self.classification_update_interval = 30  # Classify room every 30 frames (~1 second)
 
     def load_coco_classes(self):
         """Load COCO class names"""
@@ -53,6 +61,388 @@ class VideoStreamServer:
             'bottle': 4, 'cup': 3, 'knife': 6, 'scissors': 5
         }
         return firefighter_objects.get(class_name, 0)
+
+    def add_to_room(self, object_name, attributes=None):
+        """Add an object to the room's set with optional attributes"""
+        if attributes:
+            # Add specific attributes for more detailed classification
+            enhanced_object = f"{attributes}_{object_name}"
+            self.objects_in_room.add(enhanced_object)
+        else:
+            self.objects_in_room.add(object_name)
+    
+    def get_object_attributes(self, class_name, bbox, frame):
+        """Extract enhanced attributes from detected objects (color, size, position, material)"""
+        attributes = []
+        
+        # Extract region of interest
+        x1, y1, x2, y2 = bbox
+        roi = frame[y1:y2, x1:x2]
+        frame_h, frame_w = frame.shape[:2]
+        
+        if roi.size > 0:
+            # Enhanced color detection with multiple methods
+            color = self.detect_enhanced_color(roi)
+            if color:
+                attributes.append(color)
+            
+            # Enhanced size classification with object-specific thresholds
+            size = self.classify_object_size(class_name, bbox, frame_w, frame_h)
+            if size:
+                attributes.append(size)
+            
+            # Position within room (tactical positioning)
+            position = self.get_room_position(bbox, frame_w, frame_h)
+            if position:
+                attributes.append(position)
+            
+            # Material detection for fire safety
+            material = self.detect_material_type(class_name, roi)
+            if material:
+                attributes.append(material)
+        
+        return "_".join(attributes) if attributes else None
+
+    def detect_enhanced_color(self, roi):
+        """Enhanced color detection using multiple methods"""
+        try:
+            # Method 1: Dominant color using K-means
+            roi_reshaped = roi.reshape(-1, 3)
+            
+            # Method 2: HSV analysis for better color detection
+            hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+            avg_hsv = np.mean(hsv_roi, axis=(0, 1))
+            h, s, v = avg_hsv
+            
+            # Method 3: RGB analysis with improved thresholds
+            avg_color = np.mean(roi, axis=(0, 1))
+            b, g, r = avg_color
+            
+            # Enhanced color classification using HSV + RGB
+            if s < 30 or v < 50:  # Low saturation or brightness
+                if v > 200:
+                    return "white"
+                elif v < 80:
+                    return "black"
+                else:
+                    return "gray"
+            
+            # Color detection using HSV hue values
+            if 0 <= h <= 10 or 160 <= h <= 180:  # Red range
+                return "red"
+            elif 35 <= h <= 85:  # Green range
+                return "green"
+            elif 100 <= h <= 130:  # Blue range
+                return "blue"
+            elif 15 <= h <= 35:  # Yellow/Orange range
+                if 15 <= h <= 25:
+                    return "yellow"
+                else:
+                    return "orange"
+            elif 130 <= h <= 160:  # Purple/Pink range
+                return "purple"
+            elif 85 <= h <= 100:  # Cyan range
+                return "cyan"
+            
+            # Fallback to RGB for edge cases
+            if r > g and r > b:
+                return "red"
+            elif g > r and g > b:
+                return "green"
+            elif b > r and b > g:
+                return "blue"
+            
+            return "neutral"
+            
+        except Exception as e:
+            print(f"Error in color detection: {e}")
+            return "unknown"
+
+    def classify_object_size(self, class_name, bbox, frame_w, frame_h):
+        """Object-specific size classification for tactical assessment"""
+        x1, y1, x2, y2 = bbox
+        area = (x2 - x1) * (y2 - y1)
+        width = x2 - x1
+        height = y2 - y1
+        
+        # Percentage of frame occupied
+        frame_area = frame_w * frame_h
+        area_percentage = (area / frame_area) * 100
+        
+        # Object-specific size thresholds for firefighter relevance
+        size_thresholds = {
+            'person': {'small': 5, 'medium': 15, 'large': 30},
+            'chair': {'small': 2, 'medium': 8, 'large': 20},
+            'couch': {'small': 8, 'medium': 20, 'large': 40},
+            'table': {'small': 3, 'medium': 12, 'large': 25},
+            'bed': {'small': 10, 'medium': 25, 'large': 45},
+            'tv': {'small': 2, 'medium': 8, 'large': 18},
+            'refrigerator': {'small': 8, 'medium': 18, 'large': 35},
+            'door': {'small': 5, 'medium': 15, 'large': 30},
+            'window': {'small': 2, 'medium': 10, 'large': 25}
+        }
+        
+        thresholds = size_thresholds.get(class_name, {'small': 3, 'medium': 10, 'large': 25})
+        
+        if area_percentage >= thresholds['large']:
+            return "large"
+        elif area_percentage >= thresholds['medium']:
+            return "medium"
+        elif area_percentage >= thresholds['small']:
+            return "small"
+        else:
+            return "tiny"
+
+    def get_room_position(self, bbox, frame_w, frame_h):
+        """Determine tactical position of object within room"""
+        x1, y1, x2, y2 = bbox
+        center_x = (x1 + x2) / 2
+        center_y = (y1 + y2) / 2
+        
+        # Normalize coordinates (0-1)
+        norm_x = center_x / frame_w
+        norm_y = center_y / frame_h
+        
+        # Tactical positioning for firefighters
+        position_parts = []
+        
+        # Vertical position (important for evacuation routes)
+        if norm_y < 0.3:
+            position_parts.append("upper")
+        elif norm_y > 0.7:
+            position_parts.append("lower")
+        else:
+            position_parts.append("mid")
+        
+        # Horizontal position (left/right tactical approach)
+        if norm_x < 0.25:
+            position_parts.append("left")
+        elif norm_x > 0.75:
+            position_parts.append("right")
+        elif 0.4 <= norm_x <= 0.6:
+            position_parts.append("center")
+        
+        # Corner detection (important for search patterns)
+        if (norm_x < 0.2 and norm_y < 0.2) or (norm_x > 0.8 and norm_y < 0.2) or \
+           (norm_x < 0.2 and norm_y > 0.8) or (norm_x > 0.8 and norm_y > 0.8):
+            position_parts.append("corner")
+        
+        return "_".join(position_parts) if position_parts else "center"
+
+    def detect_material_type(self, class_name, roi):
+        """Detect material type for fire safety assessment"""
+        try:
+            # Material classification based on object type and visual cues
+            material_mapping = {
+                'chair': ['wood', 'metal', 'plastic', 'fabric'],
+                'table': ['wood', 'metal', 'glass'],
+                'couch': ['fabric', 'leather'],
+                'bed': ['fabric', 'wood'],
+                'door': ['wood', 'metal'],
+                'window': ['glass', 'metal'],
+                'refrigerator': ['metal'],
+                'tv': ['plastic', 'metal'],
+                'bottle': ['plastic', 'glass'],
+                'cup': ['ceramic', 'plastic', 'glass']
+            }
+            
+            possible_materials = material_mapping.get(class_name, ['unknown'])
+            
+            # Simple heuristics based on color and texture
+            avg_color = np.mean(roi, axis=(0, 1))
+            b, g, r = avg_color
+            
+            # Texture analysis using standard deviation
+            gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            texture_std = np.std(gray_roi)
+            
+            # Material detection heuristics
+            if class_name in ['chair', 'table', 'bed']:
+                if texture_std > 30 and (r > 100 and g > 80 and b < 100):  # Wood-like
+                    return "wood"
+                elif texture_std < 15 and (r > 150 or g > 150 or b > 150):  # Metal-like
+                    return "metal"
+                elif texture_std > 25:  # Fabric-like
+                    return "fabric"
+            elif class_name in ['bottle', 'window']:
+                if texture_std < 20:  # Smooth surface
+                    return "glass"
+                else:
+                    return "plastic"
+            elif class_name in ['refrigerator', 'tv']:
+                return "metal"
+            
+            # Default to first possible material
+            return possible_materials[0] if possible_materials else "unknown"
+            
+        except Exception as e:
+            print(f"Error in material detection: {e}")
+            return "unknown"
+
+    def llm_classify_room(self, objects_list):
+        """Lightweight rule-based room classification (can be replaced with actual LLM)"""
+        objects_str = " ".join(objects_list).lower()
+        
+        # Room classification rules based on object combinations
+        room_indicators = {
+            "kitchen": {
+                "primary": ["refrigerator", "microwave", "oven", "sink", "toaster"],
+                "secondary": ["dining_table", "chair", "bowl", "cup", "knife", "spoon"],
+                "weight": 0.0
+            },
+            "living_room": {
+                "primary": ["couch", "tv", "remote"],
+                "secondary": ["chair", "book", "vase", "clock"],
+                "weight": 0.0
+            },
+            "bedroom": {
+                "primary": ["bed", "pillow"],
+                "secondary": ["chair", "book", "clock", "teddy_bear"],
+                "weight": 0.0
+            },
+            "dining_room": {
+                "primary": ["dining_table", "chair"],
+                "secondary": ["bowl", "cup", "wine_glass", "vase"],
+                "weight": 0.0
+            },
+            "bathroom": {
+                "primary": ["toilet", "sink", "toothbrush"],
+                "secondary": ["hair_drier", "scissors"],
+                "weight": 0.0
+            },
+            "office": {
+                "primary": ["laptop", "keyboard", "mouse", "book"],
+                "secondary": ["chair", "cup", "clock"],
+                "weight": 0.0
+            }
+        }
+        
+        # Calculate weights for each room type
+        for room_type, indicators in room_indicators.items():
+            # Primary indicators (high weight)
+            for primary_obj in indicators["primary"]:
+                if primary_obj in objects_str:
+                    indicators["weight"] += 3.0
+            
+            # Secondary indicators (lower weight)
+            for secondary_obj in indicators["secondary"]:
+                if secondary_obj in objects_str:
+                    indicators["weight"] += 1.0
+        
+        # Find the room with highest weight
+        best_room = max(room_indicators.items(), key=lambda x: x[1]["weight"])
+        room_name, room_data = best_room
+        
+        if room_data["weight"] > 2.0:  # Minimum confidence threshold
+            confidence = min(room_data["weight"] / 10.0, 1.0)  # Normalize to 0-1
+            return room_name.replace("_", " ").title(), confidence
+        else:
+            return "Unknown Room", 0.0
+
+    def classify_room(self):
+        """Classify the current room based on detected objects with enhanced attributes"""
+        if len(self.objects_in_room) < 2:  # Need at least 2 objects for classification
+            return
+        
+        objects_list = list(self.objects_in_room)
+        room_type, confidence = self.llm_classify_room(objects_list)
+        
+        # Update room classification if confidence is higher
+        if confidence > self.room_confidence:
+            self.room_classification = room_type
+            self.room_confidence = confidence
+            
+            # Enhanced logging with attribute breakdown
+            print(f"🏠 Room Classification: {room_type} (confidence: {confidence:.2f})")
+            print(f"📦 Enhanced Objects detected ({len(objects_list)}):")
+            
+            # Group objects by type for better readability
+            object_groups = {}
+            for obj in sorted(objects_list):
+                if '_' in obj:
+                    parts = obj.split('_')
+                    base_object = parts[-1]  # Last part is the object type
+                    attributes = '_'.join(parts[:-1])  # Everything else is attributes
+                else:
+                    base_object = obj
+                    attributes = "basic"
+                
+                if base_object not in object_groups:
+                    object_groups[base_object] = []
+                object_groups[base_object].append(attributes)
+            
+            for obj_type, attr_list in object_groups.items():
+                print(f"   • {obj_type}: {', '.join(attr_list)}")
+            
+            # Tactical assessment
+            self.print_tactical_assessment(objects_list, room_type)
+
+    def print_tactical_assessment(self, objects_list, room_type):
+        """Print tactical assessment for firefighters"""
+        print(f"\n🚨 TACTICAL ASSESSMENT - {room_type.upper()}:")
+        
+        # Analyze object attributes for tactical info
+        hazard_objects = []
+        large_obstacles = []
+        corner_items = []
+        flammable_materials = []
+        
+        for obj in objects_list:
+            if 'large' in obj:
+                large_obstacles.append(obj)
+            if 'corner' in obj:
+                corner_items.append(obj)
+            if any(material in obj for material in ['wood', 'fabric', 'plastic']):
+                flammable_materials.append(obj)
+            if any(hazard in obj for hazard in ['red', 'metal', 'glass']):
+                hazard_objects.append(obj)
+        
+        if large_obstacles:
+            print(f"   ⚠️  Large obstacles: {len(large_obstacles)} items")
+        if corner_items:
+            print(f"   🔍 Corner items: {len(corner_items)} (check blind spots)")
+        if flammable_materials:
+            print(f"   🔥 Flammable materials: {len(flammable_materials)} items")
+        if hazard_objects:
+            print(f"   ⚡ Potential hazards: {len(hazard_objects)} items")
+        
+        print("=" * 50)
+
+    def get_room_context(self):
+        """Get contextual information about the current room for firefighters"""
+        room_contexts = {
+            "Kitchen": {
+                "hazards": ["Gas lines", "Electrical appliances", "Hot surfaces"],
+                "priorities": ["Check stove/oven", "Gas shut-off", "Electrical panel"],
+                "evacuation": "Multiple exit routes typically available"
+            },
+            "Living Room": {
+                "hazards": ["Furniture obstacles", "Electronics", "Fabric materials"],
+                "priorities": ["Check for occupants", "Clear pathways", "Electrical hazards"],
+                "evacuation": "Usually connects to main exits"
+            },
+            "Bedroom": {
+                "hazards": ["Limited exits", "Clothing/fabric", "Personal items"],
+                "priorities": ["Check under beds", "Closets", "Windows as exits"],
+                "evacuation": "Often single exit - check windows"
+            },
+            "Bathroom": {
+                "hazards": ["Water/electrical", "Confined space", "Slippery surfaces"],
+                "priorities": ["Water shut-off", "Ventilation", "Check behind door"],
+                "evacuation": "Limited space - quick sweep needed"
+            },
+            "Office": {
+                "hazards": ["Paper/documents", "Electronics", "Cables"],
+                "priorities": ["Data/equipment", "Electrical panel", "Check desks"],
+                "evacuation": "Multiple workstations to check"
+            }
+        }
+        
+        return room_contexts.get(self.room_classification, {
+            "hazards": ["Unknown hazards"],
+            "priorities": ["Standard sweep"],
+            "evacuation": "Assess available exits"
+        })
 
     def initialize_camera(self):
         """Initialize camera and detection models"""
@@ -120,6 +510,12 @@ class VideoStreamServer:
                             if confidence > 0.3:
                                 class_name = self.coco_classes[class_id] if class_id < len(self.coco_classes) else "unknown"
                                 priority = self.get_firefighter_object_priority(class_name)
+                                
+                                # Add to room classification system if confidence is high enough
+                                if confidence > self.object_confidence_threshold:
+                                    bbox = [int(x1), int(y1), int(x2), int(y2)]
+                                    attributes = self.get_object_attributes(class_name, bbox, frame)
+                                    self.add_to_room(class_name, attributes)
 
                                 detection = {
                                     "type": "object",
@@ -324,6 +720,12 @@ class VideoStreamServer:
                 "data": frame_data,
                 "detections": detections,
                 "gestures": gestures,
+                "room_classification": {
+                    "type": self.room_classification,
+                    "confidence": self.room_confidence,
+                    "objects_count": len(self.objects_in_room),
+                    "context": self.get_room_context()
+                },
                 "timestamp": datetime.now().isoformat()
             }
 
@@ -348,6 +750,12 @@ class VideoStreamServer:
                 # Process frame for detections
                 detections = self.detect_objects(frame)
                 gestures = self.detect_gestures(frame)
+                
+                # Room classification (every 30 frames ~1 second)
+                self.classification_update_counter += 1
+                if self.classification_update_counter >= self.classification_update_interval:
+                    self.classify_room()
+                    self.classification_update_counter = 0
 
                 frame_with_detections = frame.copy()
 

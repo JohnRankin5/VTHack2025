@@ -14,6 +14,7 @@ export default function LiveFeedPage() {
   const [detectedObjects, setDetectedObjects] = useState([]);
   const [detectedGestures, setDetectedGestures] = useState([]);
   const [detectionData, setDetectionData] = useState(null);
+  const [roomClassification, setRoomClassification] = useState(null);
   
   // Overlay visibility controls
   const [showObjectDetection, setShowObjectDetection] = useState(true);
@@ -55,20 +56,6 @@ export default function LiveFeedPage() {
     });
   }, [showObjectDetection, showGestureDetection, showHUDOverlays, forceUpdate]);
 
-  // Handle detection updates from video stream
-  const handleDetectionUpdate = (data) => {
-    setDetectedObjects(data.detections || []);
-    setDetectedGestures(data.gestures || []);
-    setObjectCount(data.detections.length);
-    setGestureCount(data.gestures.length);
-    setDetectionData({
-      timestamp: data.timestamp,
-      object_detections: data.detections,
-      gesture_detections: data.gestures,
-      object_count: data.detections.length,
-      gesture_count: data.gestures.length
-    });
-  };
 
   // Fetch detection data for non-Mac cameras
   useEffect(() => {
@@ -113,6 +100,16 @@ export default function LiveFeedPage() {
     setDetectedObjects([]);
     setDetectedGestures([]);
     setDetectionData(null);
+    setRoomClassification(null);
+  };
+
+  const handleDetectionUpdate = (data) => {
+    setDetectedObjects(data.detections || []);
+    setDetectedGestures(data.gestures || []);
+    setObjectCount((data.detections || []).length);
+    setGestureCount((data.gestures || []).length);
+    setRoomClassification(data.roomClassification);
+    setDetectionData(data);
   };
 
   return (
@@ -512,6 +509,51 @@ export default function LiveFeedPage() {
               </div>
             )}
           </div>
+
+          {/* Room Classification */}
+          {roomClassification && roomClassification.confidence > 0.3 && (
+            <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+              <h3 className="text-sm font-semibold mb-3 text-white">🏠 Room Analysis</h3>
+              <div className="space-y-3">
+                <div className="bg-purple-500/20 p-3 rounded border border-purple-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-purple-300">{roomClassification.type}</span>
+                    <span className="text-xs bg-purple-600 px-2 py-1 rounded">
+                      {Math.round(roomClassification.confidence * 100)}%
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-300">
+                    Objects detected: {roomClassification.objects_count}
+                  </div>
+                </div>
+                
+                {roomClassification.context && (
+                  <div className="space-y-2">
+                    <div className="bg-red-500/20 p-2 rounded border border-red-500/30">
+                      <div className="text-xs font-semibold text-red-300 mb-1">⚠️ Hazards</div>
+                      <div className="text-xs text-gray-300">
+                        {roomClassification.context.hazards?.join(', ')}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-yellow-500/20 p-2 rounded border border-yellow-500/30">
+                      <div className="text-xs font-semibold text-yellow-300 mb-1">🎯 Priorities</div>
+                      <div className="text-xs text-gray-300">
+                        {roomClassification.context.priorities?.join(', ')}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-blue-500/20 p-2 rounded border border-blue-500/30">
+                      <div className="text-xs font-semibold text-blue-300 mb-1">🚪 Evacuation</div>
+                      <div className="text-xs text-gray-300">
+                        {roomClassification.context.evacuation}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* System Status */}
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
