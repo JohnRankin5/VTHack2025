@@ -21,9 +21,9 @@ As a past volunteer firefighter, one of our teammates experienced the challenges
 
 ## 🛠️ How We Built It
 - **Sensors**  
-  - LiDAR → 2D mapping  
+  - LiDAR (Slamtec C1) → 2D mapping  
   - Radar (24 GHz FMCW) → depth through smoke  
-  - IMU → drift correction & localization  
+  - IMU (BNO055) → drift correction & localization  
   - RGB Camera → YOLOv5 object detection  
   - Microphone → Whisper speech-to-text  
 
@@ -35,6 +35,22 @@ As a past volunteer firefighter, one of our teammates experienced the challenges
 - **Networking**  
   - Custom ad-hoc router system over 802.11 Wi-Fi  
   - Multi-device data transfer via sockets and ports  
+
+---
+
+## ⚙️ Equipment Spotlight: Slamtec C1 LiDAR
+We used the **Slamtec C1 LiDAR** as the core of our SLAM system:  
+
+- **360° scanning range** for building accurate 2D maps  
+- **High sampling rate** for smooth point cloud generation  
+- **Compact + lightweight design**, making it helmet-friendly  
+- Works with the **BNO055 IMU** to correct drift and improve localization  
+- Provides **precise obstacle detection** for navigation and mapping  
+
+**Key Features**:  
+- Builds detailed **geometric maps** of walls and obstacles  
+- Serves as the base layer for our **fused SLAM pipeline** (LiDAR + radar)  
+- Essential for generating the **semantic room maps** used for communication  
 
 ---
 
@@ -52,6 +68,17 @@ We integrated a **commercial-grade 24 GHz FMCW radar module** to enhance percept
 - Supports **range + velocity detection**  
 - Feeds radar heatmaps into our **LiDAR + IMU SLAM pipeline**  
 - Required configuring and studying **300+ pages of documentation** to operate  
+
+---
+
+## ⚙️ Equipment Spotlight: BNO055 IMU
+The **BNO055 IMU** provided orientation and motion tracking for localization:  
+
+- **9-axis sensor fusion** combining accelerometer, gyroscope, and magnetometer  
+- Onboard **sensor fusion processor** for drift-free orientation  
+- Provides real-time motion data to correct LiDAR drift  
+- Lightweight and designed for embedded systems  
+- Critical for stabilizing the **mapping pipeline** and ensuring accurate firefighter tracking  
 
 ---
 
@@ -78,3 +105,9 @@ We integrated a **commercial-grade 24 GHz FMCW radar module** to enhance percept
 - Improve HUD for clearer real-time awareness  
 
 ---
+
+## 👥 Team
+- Bao Doung  
+- Jacob Diep  
+- Jeremy Ky  
+- John Rankin  
