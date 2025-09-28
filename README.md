@@ -38,6 +38,23 @@ As a past volunteer firefighter, one of our teammates experienced the challenges
 
 ---
 
+## ⚙️ Equipment Spotlight: 24 GHz FMCW Radar
+We integrated a **commercial-grade 24 GHz FMCW radar module** to enhance perception in low-visibility environments:  
+
+- **ADF5901** – 24 GHz transmitter (1 TX)  
+- **ADF5904** – 24 GHz receiver (4 RX) enabling MIMO radar  
+- **ADAR7251** – 4-channel, 16-bit ADC digitizing radar returns  
+- **ADF4149** – PLL + VCO generating precise chirps  
+- **ADSP-BF700/BF701** – Blackfin DSP for real-time processing  
+
+**Key Features**:  
+- Provides **depth perception through dense smoke**  
+- Supports **range + velocity detection**  
+- Feeds radar heatmaps into our **LiDAR + IMU SLAM pipeline**  
+- Required configuring and studying **300+ pages of documentation** to operate  
+
+---
+
 ## 📚 What We Learned
 - Multi-sensor fusion is powerful but challenging  
 - Radar requires significant documentation and setup to configure properly  
@@ -61,5 +78,3 @@ As a past volunteer firefighter, one of our teammates experienced the challenges
 - Improve HUD for clearer real-time awareness  
 
 ---
-
-## 📂 Repository Structure
