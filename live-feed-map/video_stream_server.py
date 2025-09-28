@@ -15,9 +15,10 @@ from datetime import datetime
 import numpy as np
 from ultralytics import YOLO
 import mediapipe as mp  # Import MediaPipe
+from radar_avoidance_system import RadarDataManager
 
 class VideoStreamServer:
-    def __init__(self, host="localhost", port=8765):
+    def __init__(self, host="localhost", port=8765, websocket_data_store=None):
         self.host = host
         self.port = port
         self.cap = None
@@ -36,6 +37,12 @@ class VideoStreamServer:
         self.room_confidence = 0.0
         self.classification_update_counter = 0
         self.classification_update_interval = 30  # Classify room every 30 frames (~1 second)
+        
+        # Radar avoidance system
+        self.radar_manager = None
+        if websocket_data_store:
+            self.radar_manager = RadarDataManager(websocket_data_store)
+            print("🔧 Radar avoidance system integrated with video stream")
 
     def load_coco_classes(self):
         """Load COCO class names"""
@@ -658,11 +665,11 @@ class VideoStreamServer:
 
                 # Color coding for objects
                 if priority >= 8:
-                    color = '#ef4444';  # Red - High priority
+                    color = (68, 68, 239)  # Red - High priority (BGR format)
                 elif priority >= 5:
-                    color = '#eab308';  # Yellow - Medium priority
+                    color = (8, 179, 234)  # Yellow - Medium priority (BGR format)
                 else:
-                    color = '#3b82f6';  # Blue - Low priority
+                    color = (246, 130, 59)  # Blue - Low priority (BGR format)
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                 label = f"{class_name}: {confidence:.2f}"
@@ -677,7 +684,7 @@ class VideoStreamServer:
                 gesture_meaning = gesture.get("meaning", "")
                 
                 # Use cyan color for gestures (different from objects)
-                color = (0, 255, 255)  # Cyan in BGR format
+                color = (255, 255, 0)  # Cyan in BGR format
 
                 # Draw bounding box for gestures
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
@@ -690,6 +697,170 @@ class VideoStreamServer:
                 cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
 
         return frame
+
+    def draw_radar_hud(self, frame, radar_data):
+        """Draw radar-based HUD overlay on frame"""
+        if not radar_data:
+            return frame
+        
+        try:
+            h, w = frame.shape[:2]
+            
+            # Get radar information
+            hud_data = radar_data.get('hud_data', {})
+            collision_warning = radar_data.get('collision_warning')
+            distance_viz = radar_data.get('distance_visualization')
+            
+            # Draw distance display (top-right corner)
+            distance = hud_data.get('distance_m')
+            if distance is not None:
+                distance_text = f"Distance: {distance:.1f}m"
+                status = hud_data.get('status', 'UNKNOWN')
+                
+                # Color based on status
+                if status == "EMERGENCY":
+                    color = (0, 0, 255)  # Red
+                elif status == "CRITICAL":
+                    color = (0, 165, 255)  # Orange
+                elif status == "WARNING":
+                    color = (0, 255, 255)  # Yellow
+                else:
+                    color = (0, 255, 0)  # Green
+                
+                # Draw distance box
+                text_size = cv2.getTextSize(distance_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
+                box_x = w - text_size[0] - 20
+                box_y = 10
+                
+                # Background rectangle
+                cv2.rectangle(frame, (box_x - 10, box_y), (box_x + text_size[0] + 10, box_y + text_size[1] + 20), (0, 0, 0), -1)
+                cv2.rectangle(frame, (box_x - 10, box_y), (box_x + text_size[0] + 10, box_y + text_size[1] + 20), color, 2)
+                
+                # Distance text
+                cv2.putText(frame, distance_text, (box_x, box_y + text_size[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                
+                # Status indicator
+                status_text = f"Status: {status}"
+                cv2.putText(frame, status_text, (box_x, box_y + text_size[1] + 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            
+            # Draw collision warning (center of screen)
+            if collision_warning:
+                warning_text = collision_warning.get('message', 'WARNING')
+                action_text = collision_warning.get('action', '')
+                level = collision_warning.get('level', 'WARNING')
+                
+                if level == "EMERGENCY":
+                    warning_color = (0, 0, 255)  # Red
+                elif level == "CRITICAL":
+                    warning_color = (0, 165, 255)  # Orange
+                else:
+                    warning_color = (0, 255, 255)  # Yellow
+                
+                # Draw warning box in center
+                warning_size = cv2.getTextSize(warning_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 3)[0]
+                action_size = cv2.getTextSize(action_text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)[0]
+                
+                box_width = max(warning_size[0], action_size[0]) + 40
+                box_height = warning_size[1] + action_size[1] + 40
+                
+                center_x = w // 2
+                center_y = h // 2
+                
+                # Warning background
+                cv2.rectangle(frame, 
+                            (center_x - box_width//2, center_y - box_height//2),
+                            (center_x + box_width//2, center_y + box_height//2),
+                            (0, 0, 0), -1)
+                cv2.rectangle(frame, 
+                            (center_x - box_width//2, center_y - box_height//2),
+                            (center_x + box_width//2, center_y + box_height//2),
+                            warning_color, 3)
+                
+                # Warning text
+                cv2.putText(frame, warning_text, 
+                          (center_x - warning_size[0]//2, center_y - 10), 
+                          cv2.FONT_HERSHEY_SIMPLEX, 1.0, warning_color, 3)
+                
+                # Action text
+                if action_text:
+                    cv2.putText(frame, action_text, 
+                              (center_x - action_size[0]//2, center_y + 20), 
+                              cv2.FONT_HERSHEY_SIMPLEX, 0.8, warning_color, 2)
+            
+            # Draw radar visualization (bottom-left corner)
+            if distance_viz:
+                self.draw_radar_visualization(frame, distance_viz)
+                
+        except Exception as e:
+            print(f"Error drawing radar HUD: {e}")
+        
+        return frame
+
+    def draw_radar_visualization(self, frame, distance_viz):
+        """Draw a simple radar-like visualization"""
+        try:
+            h, w = frame.shape[:2]
+            
+            # Radar display parameters
+            radar_center_x = 80
+            radar_center_y = h - 80
+            radar_radius = 60
+            
+            current_distance = distance_viz.get('current_distance', 0)
+            max_range = distance_viz.get('max_range', 5.0)
+            zones = distance_viz.get('zones', [])
+            
+            # Draw radar background circle
+            cv2.circle(frame, (radar_center_x, radar_center_y), radar_radius, (50, 50, 50), -1)
+            cv2.circle(frame, (radar_center_x, radar_center_y), radar_radius, (255, 255, 255), 2)
+            
+            # Draw zone circles
+            for zone in zones:
+                zone_range = zone.get('range', 1.0)
+                zone_radius = int((zone_range / max_range) * radar_radius)
+                if zone_radius <= radar_radius:
+                    # Convert hex color to BGR
+                    color_hex = zone.get('color', '#FFFFFF')
+                    if color_hex.startswith('#'):
+                        color_hex = color_hex[1:]
+                    
+                    # Simple color mapping
+                    if 'FF0000' in color_hex:  # Red
+                        zone_color = (0, 0, 255)
+                    elif 'FF6600' in color_hex:  # Orange
+                        zone_color = (0, 165, 255)
+                    elif 'FFAA00' in color_hex:  # Yellow
+                        zone_color = (0, 255, 255)
+                    else:  # Green
+                        zone_color = (0, 255, 0)
+                    
+                    cv2.circle(frame, (radar_center_x, radar_center_y), zone_radius, zone_color, 1)
+            
+            # Draw current distance indicator (as a line pointing up)
+            if current_distance <= max_range:
+                distance_radius = int((current_distance / max_range) * radar_radius)
+                end_x = radar_center_x
+                end_y = radar_center_y - distance_radius
+                
+                # Color based on distance
+                if current_distance <= 0.5:
+                    line_color = (0, 0, 255)  # Red
+                elif current_distance <= 1.0:
+                    line_color = (0, 165, 255)  # Orange
+                elif current_distance <= 2.0:
+                    line_color = (0, 255, 255)  # Yellow
+                else:
+                    line_color = (0, 255, 0)  # Green
+                
+                cv2.line(frame, (radar_center_x, radar_center_y), (end_x, end_y), line_color, 3)
+                cv2.circle(frame, (end_x, end_y), 3, line_color, -1)
+            
+            # Draw radar label
+            cv2.putText(frame, "RADAR", (radar_center_x - 25, radar_center_y + radar_radius + 20), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+            
+        except Exception as e:
+            print(f"Error drawing radar visualization: {e}")
 
     def encode_frame(self, frame):
         """Encode frame as base64 JPEG"""
@@ -712,7 +883,7 @@ class VideoStreamServer:
             self.clients.remove(websocket)
             print(f"Client disconnected. Total clients: {len(self.clients)}")
 
-    async def broadcast_frame(self, frame_data, detections, gestures):
+    async def broadcast_frame(self, frame_data, detections, gestures, radar_data=None):
         """Broadcast frame and detection data to all connected clients"""
         if self.clients:
             message = {
@@ -726,6 +897,7 @@ class VideoStreamServer:
                     "objects_count": len(self.objects_in_room),
                     "context": self.get_room_context()
                 },
+                "radar_data": radar_data,
                 "timestamp": datetime.now().isoformat()
             }
 
@@ -751,20 +923,41 @@ class VideoStreamServer:
                 detections = self.detect_objects(frame)
                 gestures = self.detect_gestures(frame)
                 
+                # Process radar data if available
+                radar_data = None
+                if self.radar_manager:
+                    try:
+                        processed_count = self.radar_manager.process_new_radar_data()
+                        radar_data = self.radar_manager.get_avoidance_data()
+                        
+                        # Log radar processing occasionally
+                        if processed_count > 0:
+                            print(f"📡 Processed {processed_count} new radar readings")
+                    except Exception as e:
+                        print(f"⚠️ Radar processing error: {e}")
+                
                 # Room classification (every 30 frames ~1 second)
                 self.classification_update_counter += 1
                 if self.classification_update_counter >= self.classification_update_interval:
                     self.classify_room()
                     self.classification_update_counter = 0
 
+                # Create frame with all overlays
                 frame_with_detections = frame.copy()
+                
+                # Draw object and gesture detections
+                frame_with_detections = self.draw_detections(frame_with_detections, detections, gestures)
+                
+                # Draw radar HUD if available
+                if radar_data:
+                    frame_with_detections = self.draw_radar_hud(frame_with_detections, radar_data)
 
                 # Encode frame
                 frame_data = self.encode_frame(frame_with_detections)
                 if frame_data:
                     # Broadcast to WebSocket clients
                     asyncio.run_coroutine_threadsafe(
-                        self.broadcast_frame(frame_data, detections, gestures),
+                        self.broadcast_frame(frame_data, detections, gestures, radar_data),
                         loop
                     )
 
@@ -801,7 +994,14 @@ class VideoStreamServer:
         cv2.destroyAllWindows()
 
 def main():
-    server = VideoStreamServer()
+    # Import the data store from websocket bridge if available
+    try:
+        from websocket_data_bridge import data_store
+        server = VideoStreamServer(websocket_data_store=data_store)
+        print("🔗 Connected to websocket data bridge for radar integration")
+    except ImportError:
+        print("⚠️ Websocket data bridge not available - running without radar integration")
+        server = VideoStreamServer()
 
     try:
         asyncio.run(server.start_server())

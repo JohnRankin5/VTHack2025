@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import RadarHUD from './RadarHUD';
 
-const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectDetection = true, showGestureDetection = true, showHUDOverlays = true }) => {
+const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectDetection = true, showGestureDetection = true, showHUDOverlays = true, showRadarHUD = true }) => {
   const [videoSrc, setVideoSrc] = useState(null);
   const [detections, setDetections] = useState([]);
   const [gestures, setGestures] = useState([]);
   const [roomClassification, setRoomClassification] = useState(null);
+  const [radarData, setRadarData] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
   const videoRef = useRef(null);
@@ -75,6 +77,7 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
             setDetections(data.detections || []);
             setGestures(data.gestures || []);
             setRoomClassification(data.room_classification || null);
+            setRadarData(data.radar_data || null);
             
             // Notify parent component of detection updates
             if (onDetectionUpdate) {
@@ -82,6 +85,7 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
                 detections: data.detections || [],
                 gestures: data.gestures || [],
                 roomClassification: data.room_classification || null,
+                radarData: data.radar_data || null,
                 timestamp: data.timestamp
               });
             }
@@ -121,6 +125,7 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
     setVideoSrc(null);
     setDetections([]);
     setGestures([]);
+    setRadarData(null);
   };
 
   const drawDetections = (ctx, detections, gestures) => {
@@ -287,6 +292,11 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
                     Objects: {roomClassification.objects_count}
                   </div>
                 </div>
+              )}
+              
+              {/* Radar HUD Overlay */}
+              {showRadarHUD && radarData && (
+                <RadarHUD radarData={radarData} isVisible={showHUDOverlays} />
               )}
             </>
           ) : (

@@ -66,11 +66,12 @@ class SensorDataStore:
 sensor_store = SensorDataStore()
 
 class SocketServer:
-    """Socket server to receive data from Jetson"""
+    """Socket server to receive data from devices (Jetson/Laptop)"""
     
-    def __init__(self, host='0.0.0.0', port=5000):
+    def __init__(self, host='0.0.0.0', port=5000, device_type="unknown"):
         self.host = host
         self.port = port
+        self.device_type = device_type or ("jetson" if port == 5000 else "laptop" if port == 5002 else "unknown")
         self.running = False
         self.server_socket = None
     
@@ -83,7 +84,7 @@ class SocketServer:
             self.server_socket.listen(5)
             self.running = True
             
-            logger.info(f"Socket server listening on {self.host}:{self.port}")
+            logger.info(f"{self.device_type.upper()} socket server listening on {self.host}:{self.port}")
             
             while self.running:
                 try:
@@ -118,13 +119,21 @@ class SocketServer:
                 
                 # Decode and process the data
                 raw_data = data.decode('utf-8').strip()
-                logger.info(f"Received from {address}: {raw_data}")
+                logger.info(f"Received from {self.device_type.upper()} {address}: {raw_data}")
                 
                 # Try to parse as JSON, fallback to raw string
                 try:
                     processed_data = json.loads(raw_data)
+                    # Add device type to processed data
+                    if isinstance(processed_data, dict):
+                        processed_data['device_type'] = self.device_type
+                        processed_data['source_port'] = self.port
                 except json.JSONDecodeError:
-                    processed_data = raw_data
+                    processed_data = {
+                        'raw_message': raw_data,
+                        'device_type': self.device_type,
+                        'source_port': self.port
+                    }
                 
                 # Store the data
                 sensor_store.add_data(raw_data, processed_data)
@@ -140,7 +149,7 @@ class SocketServer:
         self.running = False
         if self.server_socket:
             self.server_socket.close()
-        logger.info("Socket server stopped")
+        logger.info(f"{self.device_type.upper()} socket server stopped")
 
 class APIHandler(BaseHTTPRequestHandler):
     """HTTP API handler for Next.js integration"""
@@ -247,23 +256,35 @@ class APIServer:
         logger.info("API server stopped")
 
 def main():
-    """Main function to start both servers"""
-    logger.info("Starting Jetson Socket Receiver...")
+    """Main function to start multiple socket servers"""
+    logger.info("Starting Multi-Device Socket Receiver...")
     
-    # Start socket server in a separate thread
-    socket_server = SocketServer(host='0.0.0.0', port=5000)
-    socket_thread = threading.Thread(target=socket_server.start)
-    socket_thread.daemon = True
-    socket_thread.start()
+    # Start Jetson socket server (port 5000)
+    jetson_server = SocketServer(host='10.42.0.117', port=65431, device_type="jetson")
+    jetson_thread = threading.Thread(target=jetson_server.start, name="JetsonServer")
+    jetson_thread.daemon = True
+    
+    # Start Laptop socket server (port 5002) 
+    laptop_server = SocketServer(host='10.42.0.117', port=65432, device_type="laptop")
+    laptop_thread = threading.Thread(target=laptop_server.start, name="LaptopServer")
+    laptop_thread.daemon = True
+    
+    # Start both socket servers
+    logger.info("Starting Jetson socket server on port 5000...")
+    jetson_thread.start()
+    
+    logger.info("Starting Laptop socket server on port 5002...")
+    laptop_thread.start()
     
     # Start API server in the main thread
-    api_server = APIServer(host='localhost', port=5001)
+    api_server = APIServer(host='localhost', port=5003)
     
     try:
         api_server.start()
     except KeyboardInterrupt:
         logger.info("Shutting down...")
-        socket_server.stop()
+        jetson_server.stop()
+        laptop_server.stop()
         api_server.stop()
 
 if __name__ == "__main__":
