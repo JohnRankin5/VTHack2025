@@ -6,8 +6,10 @@ This setup allows your Mac camera to act as one of the firefighter helmets in th
 
 - **Live Video Streaming**: Real-time video feed from your Mac camera displayed in the web interface
 - **Object Detection**: Uses YOLOv8 to detect objects relevant to firefighters (doors, windows, people, etc.)
+- **Hand Gesture Recognition**: Custom OpenCV-based gesture detection for firefighter signals
+- **Overlay Controls**: Toggle object detection, gesture detection, and HUD overlays independently
 - **Real-time Integration**: Live detection results are displayed as overlays on the video stream
-- **Priority System**: Objects are prioritized based on firefighter relevance
+- **Priority System**: Objects and gestures are prioritized based on firefighter relevance
 - **WebSocket Streaming**: Low-latency video streaming via WebSocket connection
 
 ## Prerequisites
@@ -82,6 +84,11 @@ python3 video_stream_server.py
 - **Medium Priority** (Yellow): Chairs, beds, sinks, knives
 - **Low Priority** (Blue): Books, clocks, decorative items
 
+### Hand Gesture Recognition
+- **Emergency Gestures** (Red): Stop, Help, Fist
+- **Direction Gestures** (Purple): Point
+- **Communication Gestures** (Cyan): OK, Thumbs Up/Down, Wave, Open Hand
+
 ### Video Streaming
 - **Real-time video**: Live feed from your Mac camera
 - **Detection overlays**: Object detection boxes drawn on video
@@ -92,15 +99,22 @@ python3 video_stream_server.py
 
 ### Live Feed Display
 - Real-time object detection boxes with confidence scores
-- Pose detection with action classification
-- Color-coded priority system
+- Hand gesture recognition with action classification
+- Color-coded priority system for both objects and gestures
 - Detection statistics overlay
 
 ### Control Panel
-- Start/Stop detection controls
-- Real-time detection results
-- Camera status and settings
-- System status indicators
+- **Detection Controls**: Start/Stop detection for Mac camera
+- **Overlay Controls**: Toggle object detection, gesture detection, and HUD overlays
+- **Detection Results**: Real-time display of detected objects and gestures
+- **Camera Status**: Battery, signal strength, resolution, FPS
+- **System Status**: Connection status and performance indicators
+
+### Overlay Controls
+- **Object Detection Toggle**: Show/hide object detection boxes and labels
+- **Gesture Detection Toggle**: Show/hide gesture detection boxes and labels  
+- **HUD Overlays Toggle**: Show/hide status indicators, counters, and audio level
+- **Quick Actions**: "Show All" and "Hide All" buttons for convenience
 
 ## Troubleshooting
 

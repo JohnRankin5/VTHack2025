@@ -23,7 +23,9 @@ async def test_websocket():
                     data = json.loads(message)
                     
                     if data.get("type") == "frame":
-                        print(f"📹 Received frame message - detections: {len(data.get('detections', []))}")
+                        detections = len(data.get('detections', []))
+                        gestures = len(data.get('gestures', []))
+                        print(f"📹 Received frame message - objects: {detections}, gestures: {gestures}")
                         message_count += 1
                     else:
                         print(f"📨 Received message: {data.get('type', 'unknown')}")

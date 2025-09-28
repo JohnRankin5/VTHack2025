@@ -34,7 +34,8 @@ async def check_websocket_server():
                 data = json.loads(message)
                 if data.get("type") == "frame":
                     detections = len(data.get('detections', []))
-                    print(f"📹 Video stream is active - detecting {detections} objects")
+                    gestures = len(data.get('gestures', []))
+                    print(f"📹 Video stream is active - detecting {detections} objects and {gestures} gestures")
                     return True
                 else:
                     print(f"⚠️  Received unexpected message type: {data.get('type')}")

@@ -15,6 +15,7 @@ from datetime import datetime
 import numpy as np
 from ultralytics import YOLO
 # import mediapipe as mp  # Temporarily disabled due to installation issues
+# Hand gesture detection removed - was unreliable
 
 class VideoStreamServer:
     def __init__(self, host="localhost", port=8765):
@@ -92,22 +93,8 @@ class VideoStreamServer:
                 print(f"Error loading model: {e}")
                 return False
             
-            # Initialize MediaPipe Pose (temporarily disabled)
-            try:
-                # self.mp_pose = mp.solutions.pose
-                # self.pose = self.mp_pose.Pose(
-                #     static_image_mode=False,
-                #     model_complexity=1,
-                #     enable_segmentation=False,
-                #     min_detection_confidence=0.5,
-                #     min_tracking_confidence=0.5
-                # )
-                # self.mp_drawing = mp.solutions.drawing_utils
-                self.pose = None  # Disabled for now
-                print("MediaPipe Pose temporarily disabled - using object detection only")
-            except Exception as e:
-                print(f"Error initializing MediaPipe: {e}")
-                return False
+            # Hand gesture detection removed - was unreliable
+            print("Object detection only - hand gestures disabled")
             
             return True
             
@@ -152,13 +139,9 @@ class VideoStreamServer:
         
         return detections
     
-    def detect_poses(self, frame):
-        """Detect human poses using MediaPipe (temporarily disabled)"""
-        poses = []
-        
-        # Temporarily disabled due to MediaPipe installation issues
-        # Will return empty poses list for now
-        return poses
+    def detect_gestures(self, frame):
+        """Hand gesture detection disabled - was unreliable"""
+        return []
     
     def analyze_firefighter_pose(self, key_points, w, h):
         """Analyze pose for firefighter-specific actions"""
@@ -228,8 +211,8 @@ class VideoStreamServer:
                 'confidence': 0.5
             }
     
-    def draw_detections(self, frame, detections, poses):
-        """Draw both object detections and poses on frame"""
+    def draw_detections(self, frame, detections, gestures):
+        """Draw both object detections and gestures on frame"""
         # Draw object detections
         for detection in detections:
             if detection["type"] == "object":
@@ -250,29 +233,7 @@ class VideoStreamServer:
                 label = f"{class_name}: {confidence:.2f}"
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
         
-        # Draw poses
-        for pose in poses:
-            if pose["type"] == "pose":
-                x1, y1, x2, y2 = pose["bbox"]
-                action = pose["action"]
-                confidence = pose["confidence"]
-                priority = pose["priority"]
-                
-                # Color coding for poses
-                if priority >= 9:
-                    color = (0, 0, 255)  # Red - Emergency
-                elif priority >= 7:
-                    color = (255, 0, 255)  # Magenta - High priority
-                else:
-                    color = (255, 255, 0)  # Cyan - Normal
-                
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                label = f"{action}: {confidence:.2f}"
-                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                
-                # Draw key points
-                for point_name, (px, py) in pose["key_points"].items():
-                    cv2.circle(frame, (px, py), 3, color, -1)
+        # Gesture drawing disabled - no gesture detection
         
         return frame
     
@@ -298,14 +259,14 @@ class VideoStreamServer:
             self.clients.remove(websocket)
             print(f"Client disconnected. Total clients: {len(self.clients)}")
     
-    async def broadcast_frame(self, frame_data, detections, poses):
+    async def broadcast_frame(self, frame_data, detections, gestures):
         """Broadcast frame and detection data to all connected clients"""
         if self.clients:
             message = {
                 "type": "frame",
                 "data": frame_data,
                 "detections": detections,
-                "poses": poses,
+                "gestures": gestures,
                 "timestamp": datetime.now().isoformat()
             }
             
@@ -331,17 +292,17 @@ class VideoStreamServer:
                 
                 # Process frame for detections
                 detections = self.detect_objects(frame)
-                poses = self.detect_poses(frame)
+                gestures = self.detect_gestures(frame)
                 
-                # Draw detections on frame
-                frame_with_detections = self.draw_detections(frame.copy(), detections, poses)
+                # IMPORTANT: send raw frame and draw overlays on the frontend to avoid double-drawing
+                frame_with_detections = frame.copy()
                 
                 # Encode frame
                 frame_data = self.encode_frame(frame_with_detections)
                 if frame_data:
                     # Broadcast to WebSocket clients
                     asyncio.run_coroutine_threadsafe(
-                        self.broadcast_frame(frame_data, detections, poses),
+                        self.broadcast_frame(frame_data, detections, gestures),
                         loop
                     )
                 
@@ -380,8 +341,7 @@ class VideoStreamServer:
         self.running = False
         if self.cap:
             self.cap.release()
-        if self.pose:
-            self.pose.close()
+        # No gesture detector to cleanup
         cv2.destroyAllWindows()
 
 def main():

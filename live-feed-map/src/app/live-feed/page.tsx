@@ -10,10 +10,16 @@ export default function LiveFeedPage() {
   const [isDetecting, setIsDetecting] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [objectCount, setObjectCount] = useState(0);
-  const [poseCount, setPoseCount] = useState(0);
+  const [gestureCount, setGestureCount] = useState(0);
   const [detectedObjects, setDetectedObjects] = useState([]);
-  const [detectedPoses, setDetectedPoses] = useState([]);
+  const [detectedGestures, setDetectedGestures] = useState([]);
   const [detectionData, setDetectionData] = useState(null);
+  
+  // Overlay visibility controls
+  const [showObjectDetection, setShowObjectDetection] = useState(true);
+  const [showGestureDetection, setShowGestureDetection] = useState(true);
+  const [showHUDOverlays, setShowHUDOverlays] = useState(true);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Simulated camera data for mesh network
@@ -35,18 +41,28 @@ export default function LiveFeedPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Track overlay state changes
+  useEffect(() => {
+    console.log('Overlay states changed:', {
+      showObjectDetection,
+      showGestureDetection,
+      showHUDOverlays,
+      forceUpdate
+    });
+  }, [showObjectDetection, showGestureDetection, showHUDOverlays, forceUpdate]);
+
   // Handle detection updates from video stream
   const handleDetectionUpdate = (data) => {
     setDetectedObjects(data.detections || []);
-    setDetectedPoses(data.poses || []);
+    setDetectedGestures(data.gestures || []);
     setObjectCount(data.detections.length);
-    setPoseCount(data.poses.length);
+    setGestureCount(data.gestures.length);
     setDetectionData({
       timestamp: data.timestamp,
       object_detections: data.detections,
-      pose_detections: data.poses,
+      gesture_detections: data.gestures,
       object_count: data.detections.length,
-      pose_count: data.poses.length
+      gesture_count: data.gestures.length
     });
   };
 
@@ -60,9 +76,9 @@ export default function LiveFeedPage() {
           const latest = data.results[0];
           setDetectionData(latest);
           setObjectCount(latest.object_count || 0);
-          setPoseCount(latest.pose_count || 0);
+          setGestureCount(latest.gesture_count || 0);
           setDetectedObjects(latest.object_detections || []);
-          setDetectedPoses(latest.pose_detections || []);
+          setDetectedGestures(latest.gesture_detections || []);
         }
       } catch (error) {
         console.error('Error fetching detection data:', error);
@@ -89,9 +105,9 @@ export default function LiveFeedPage() {
   const stopDetection = () => {
     setIsDetecting(false);
     setObjectCount(0);
-    setPoseCount(0);
+    setGestureCount(0);
     setDetectedObjects([]);
-    setDetectedPoses([]);
+    setDetectedGestures([]);
     setDetectionData(null);
   };
 
@@ -105,37 +121,46 @@ export default function LiveFeedPage() {
             <>
               {/* Live Video Stream */}
               <LiveVideoStream 
+                key={`${selectedCamera}-${showObjectDetection}-${showGestureDetection}-${showHUDOverlays}-${forceUpdate}`}
                 cameraId={selectedCamera}
                 isDetecting={isDetecting}
                 onDetectionUpdate={handleDetectionUpdate}
+                showObjectDetection={showObjectDetection}
+                showGestureDetection={showGestureDetection}
+                showHUDOverlays={showHUDOverlays}
               />
               
-              {/* HUD Overlays */}
-              <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded text-sm font-bold z-20">
-                {isRecording ? 'REC' : 'LIVE'}
-              </div>
-              <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded text-sm z-20">
-                {selectedCameraData.resolution}
-              </div>
-              
-              {/* Detection Overlays */}
-              <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded z-20">
-                <div className="text-sm font-semibold">Objects: {objectCount} | Poses: {poseCount}</div>
-                <div className="text-xs">
-                  {detectedObjects.length > 0 ? `Nearest: ${detectedObjects[0]?.class_name || 'Unknown'}` : 'No objects detected'}
-                </div>
-              </div>
-              
-              {/* Audio Level Indicator */}
-              <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded z-20">
-                <div className="text-sm font-semibold">Audio Level</div>
-                <div className="w-20 h-2 bg-gray-600 rounded mt-1">
-                  <div 
-                    className="h-full bg-green-500 rounded transition-all duration-100"
-                    style={{ width: `${audioLevel}%` }}
-                  ></div>
-                </div>
-              </div>
+              {/* HUD Overlays - Conditionally visible */}
+              {showHUDOverlays && (
+                <>
+                  <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded text-sm font-bold z-20">
+                    {isRecording ? 'REC' : 'LIVE'}
+                  </div>
+                  <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded text-sm z-20">
+                    {selectedCameraData.resolution}
+                  </div>
+                  
+                  {/* Detection Overlays */}
+                  <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded z-20">
+                    <div className="text-sm font-semibold">Objects: {objectCount} | Gestures: {gestureCount}</div>
+                    <div className="text-xs">
+                      {detectedObjects.length > 0 ? `Nearest: ${detectedObjects[0]?.class_name || 'Unknown'}` : 
+                       detectedGestures.length > 0 ? `Gesture: ${detectedGestures[0]?.gesture || 'Unknown'}` : 'No detections'}
+                    </div>
+                  </div>
+                  
+                  {/* Audio Level Indicator */}
+                  <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded z-20">
+                    <div className="text-sm font-semibold">Audio Level</div>
+                    <div className="w-20 h-2 bg-gray-600 rounded mt-1">
+                      <div 
+                        className="h-full bg-green-500 rounded transition-all duration-100"
+                        style={{ width: `${audioLevel}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <div className="w-full h-full bg-gray-700 rounded-lg flex items-center justify-center">
@@ -222,6 +247,122 @@ export default function LiveFeedPage() {
             )}
           </div>
 
+          {/* Overlay Controls */}
+          <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <h3 className="text-sm font-semibold mb-3 text-white">Overlay Controls</h3>
+            {/* Debug info */}
+            <div className="text-xs text-gray-400 mb-2">
+              Debug: Objects={showObjectDetection ? 'ON' : 'OFF'}, Gestures={showGestureDetection ? 'ON' : 'OFF'}, HUD={showHUDOverlays ? 'ON' : 'OFF'} | Update: {forceUpdate}
+            </div>
+            <div className="space-y-3">
+              {/* Object Detection Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-300">Object Detection</span>
+                <button
+                  onClick={() => {
+                    console.log('Object detection toggle clicked, current state:', showObjectDetection);
+                    setShowObjectDetection(!showObjectDetection);
+                    setForceUpdate(prev => prev + 1);
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 cursor-pointer hover:scale-105 ${
+                    showObjectDetection ? 'bg-blue-500 shadow-lg' : 'bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                      showObjectDetection ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              {/* Gesture Detection Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-300">Gesture Detection</span>
+                <button
+                  onClick={() => {
+                    console.log('Gesture detection toggle clicked, current state:', showGestureDetection);
+                    setShowGestureDetection(!showGestureDetection);
+                    setForceUpdate(prev => prev + 1);
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 cursor-pointer hover:scale-105 ${
+                    showGestureDetection ? 'bg-purple-500 shadow-lg' : 'bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                      showGestureDetection ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              {/* HUD Overlays Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-300">HUD Overlays</span>
+                <button
+                  onClick={() => {
+                    console.log('HUD overlays toggle clicked, current state:', showHUDOverlays);
+                    setShowHUDOverlays(!showHUDOverlays);
+                    setForceUpdate(prev => prev + 1);
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 cursor-pointer hover:scale-105 ${
+                    showHUDOverlays ? 'bg-green-500 shadow-lg' : 'bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                      showHUDOverlays ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              {/* Test Button */}
+              <div className="pt-2 border-t border-white/10">
+                <button
+                  onClick={() => {
+                    console.log('Test button clicked!');
+                    alert('Test button works! Current states: Objects=' + showObjectDetection + ', Gestures=' + showGestureDetection + ', HUD=' + showHUDOverlays);
+                  }}
+                  className="w-full px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors cursor-pointer mb-2"
+                >
+                  🧪 Test Button
+                </button>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      console.log('Show All clicked');
+                      setShowObjectDetection(true);
+                      setShowGestureDetection(true);
+                      setShowHUDOverlays(true);
+                      setForceUpdate(prev => prev + 1);
+                    }}
+                    className="flex-1 px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors cursor-pointer"
+                  >
+                    Show All
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('Hide All clicked');
+                      setShowObjectDetection(false);
+                      setShowGestureDetection(false);
+                      setShowHUDOverlays(false);
+                      setForceUpdate(prev => prev + 1);
+                    }}
+                    className="flex-1 px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors cursor-pointer"
+                  >
+                    Hide All
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Camera Settings */}
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <h3 className="text-sm font-semibold mb-3 text-white">Camera Settings</h3>
@@ -256,14 +397,14 @@ export default function LiveFeedPage() {
                   <div className="text-gray-300">Priority: {obj.priority}</div>
                 </div>
               ))}
-              {detectedPoses.map((pose, index) => (
-                <div key={`pose-${index}`} className="bg-white/10 p-2 rounded-lg text-xs">
-                  <div className="font-semibold text-white">{pose.action}</div>
-                  <div className="text-gray-300">Confidence: {Math.round(pose.confidence * 100)}%</div>
-                  <div className="text-gray-300">Priority: {pose.priority}</div>
+              {detectedGestures.map((gesture, index) => (
+                <div key={`gesture-${index}`} className="bg-white/10 p-2 rounded-lg text-xs">
+                  <div className="font-semibold text-white">{gesture.gesture} ({gesture.meaning})</div>
+                  <div className="text-gray-300">Confidence: {Math.round(gesture.confidence * 100)}%</div>
+                  <div className="text-gray-300">Priority: {gesture.priority}</div>
                 </div>
               ))}
-              {detectedObjects.length === 0 && detectedPoses.length === 0 && (
+              {detectedObjects.length === 0 && detectedGestures.length === 0 && (
                 <div className="text-gray-400 text-xs text-center py-4">
                   {isDetecting ? 'No detections yet...' : 'Start detection to see results'}
                 </div>

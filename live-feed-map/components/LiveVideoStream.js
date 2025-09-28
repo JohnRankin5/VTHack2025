@@ -2,16 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate }) => {
+const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectDetection = true, showGestureDetection = true, showHUDOverlays = true }) => {
+  // Debug logging
+  console.log('LiveVideoStream props:', { showObjectDetection, showGestureDetection, showHUDOverlays });
+  
   const [videoSrc, setVideoSrc] = useState(null);
   const [detections, setDetections] = useState([]);
-  const [poses, setPoses] = useState([]);
+  const [gestures, setGestures] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
   const videoRef = useRef(null);
   const wsRef = useRef(null);
   const canvasRef = useRef(null);
 
+  // WebSocket connection management
   useEffect(() => {
     if (isDetecting && cameraId === 'FF-001') {
       connectWebSocket();
@@ -24,15 +28,34 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate }) => {
     };
   }, [isDetecting, cameraId]);
 
+  // Canvas drawing when detections or toggle states change
+  useEffect(() => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      // Set canvas size to match video container
+      if (videoRef.current) {
+        canvas.width = videoRef.current.offsetWidth;
+        canvas.height = videoRef.current.offsetHeight;
+      }
+      
+      // Always redraw (or clear) when detections, gestures, or toggle states change
+      drawDetections(ctx, detections, gestures);
+    }
+  }, [detections, gestures, showObjectDetection, showGestureDetection]);
+
   const connectWebSocket = () => {
+    if (wsRef.current) return; // Already connected
+
     try {
-      // Connect to the video stream WebSocket server
       wsRef.current = new WebSocket('ws://localhost:8765');
+      setIsConnected(false);
+      setError(null);
 
       wsRef.current.onopen = () => {
         console.log('Connected to video stream server');
         setIsConnected(true);
-        setError(null);
       };
 
       wsRef.current.onmessage = (event) => {
@@ -52,13 +75,13 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate }) => {
             
             setVideoSrc(imageUrl);
             setDetections(data.detections || []);
-            setPoses(data.poses || []);
+            setGestures(data.gestures || []);
             
             // Notify parent component of detection updates
             if (onDetectionUpdate) {
               onDetectionUpdate({
                 detections: data.detections || [],
-                poses: data.poses || [],
+                gestures: data.gestures || [],
                 timestamp: data.timestamp
               });
             }
@@ -98,96 +121,122 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate }) => {
     setIsConnected(false);
     setVideoSrc(null);
     setDetections([]);
-    setPoses([]);
+    setGestures([]);
   };
 
-  const drawDetections = (ctx, detections, poses) => {
+  const drawDetections = (ctx, detections, gestures) => {
     // Clear previous drawings
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     
-    // Draw object detection boxes
-    detections.forEach((detection, index) => {
-      if (detection.type === 'object') {
-        const [x1, y1, x2, y2] = detection.bbox;
-        const confidence = detection.confidence;
-        const class_name = detection.class_name;
-        const priority = detection.priority;
-        
-        // Color coding for objects
-        let color;
-        if (priority >= 8) {
-          color = '#ef4444'; // Red - High priority
-        } else if (priority >= 5) {
-          color = '#eab308'; // Yellow - Medium priority
-        } else {
-          color = '#3b82f6'; // Blue - Low priority
-        }
-        
-        // Draw bounding box
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-        
-        // Draw label
-        ctx.fillStyle = color;
-        ctx.font = '12px Arial';
-        ctx.fillText(`${class_name}: ${Math.round(confidence * 100)}%`, x1, y1 - 5);
-      }
+    console.log('drawDetections called with:', { 
+      showObjectDetection, 
+      showGestureDetection, 
+      detectionsCount: detections.length, 
+      gesturesCount: gestures.length,
+      canvasSize: { width: ctx.canvas.width, height: ctx.canvas.height }
     });
     
-    // Draw pose detection boxes
-    poses.forEach((pose, index) => {
-      if (pose.type === 'pose') {
-        const [x1, y1, x2, y2] = pose.bbox;
-        const action = pose.action;
-        const confidence = pose.confidence;
-        const priority = pose.priority;
-        
-        // Color coding for poses
-        let color;
-        if (priority >= 9) {
-          color = '#dc2626'; // Red - Emergency
-        } else if (priority >= 7) {
-          color = '#7c3aed'; // Magenta - High priority
-        } else {
-          color = '#06b6d4'; // Cyan - Normal
-        }
-        
-        // Draw bounding box
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-        
-        // Draw label
-        ctx.fillStyle = color;
-        ctx.font = '12px Arial';
-        ctx.fillText(`${action}: ${Math.round(confidence * 100)}%`, x1, y1 - 5);
-        
-        // Draw key points
-        Object.entries(pose.key_points || {}).forEach(([point_name, [px, py]]) => {
+    // Calculate letterbox-aware scaling
+    // Backend sends coordinates for 640x480, but canvas/container may differ
+    const backendWidth = 640;
+    const backendHeight = 480;
+    const scale = Math.min(ctx.canvas.width / backendWidth, ctx.canvas.height / backendHeight);
+    const displayWidth = backendWidth * scale;
+    const displayHeight = backendHeight * scale;
+    const offsetX = (ctx.canvas.width - displayWidth) / 2;
+    const offsetY = (ctx.canvas.height - displayHeight) / 2;
+    
+    console.log('Scaling:', { scale, offsetX, offsetY, displayWidth, displayHeight });
+    
+    // Draw object detection boxes (only if enabled)
+    if (showObjectDetection && detections.length > 0) {
+      detections.forEach((detection, index) => {
+        if (detection.type === 'object') {
+          const [x1, y1, x2, y2] = detection.bbox;
+          
+          // Scale with letterbox offsets
+          const scaledX1 = offsetX + x1 * scale;
+          const scaledY1 = offsetY + y1 * scale;
+          const scaledX2 = offsetX + x2 * scale;
+          const scaledY2 = offsetY + y2 * scale;
+          
+          const confidence = detection.confidence;
+          const class_name = detection.class_name;
+          const priority = detection.priority;
+          
+          // Color coding for objects
+          let color;
+          if (priority >= 8) {
+            color = '#ef4444'; // Red - High priority
+          } else if (priority >= 5) {
+            color = '#eab308'; // Yellow - Medium priority
+          } else {
+            color = '#3b82f6'; // Blue - Low priority
+          }
+          
+          // Draw bounding box
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(scaledX1, scaledY1, scaledX2 - scaledX1, scaledY2 - scaledY1);
+          
+          // Draw label
           ctx.fillStyle = color;
-          ctx.beginPath();
-          ctx.arc(px, py, 3, 0, 2 * Math.PI);
-          ctx.fill();
-        });
-      }
-    });
-  };
-
-  useEffect(() => {
-    if (canvasRef.current && (detections.length > 0 || poses.length > 0)) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      
-      // Set canvas size to match video
-      if (videoRef.current) {
-        canvas.width = videoRef.current.offsetWidth;
-        canvas.height = videoRef.current.offsetHeight;
-      }
-      
-      drawDetections(ctx, detections, poses);
+          ctx.font = '12px Arial';
+          ctx.fillText(`${class_name}: ${Math.round(confidence * 100)}%`, scaledX1, scaledY1 - 5);
+        }
+      });
     }
-  }, [detections, poses]);
+    
+    // Draw gesture detection boxes (only if enabled)
+    if (showGestureDetection && gestures.length > 0) {
+      gestures.forEach((gesture, index) => {
+        if (gesture.type === 'gesture') {
+          const [x1, y1, x2, y2] = gesture.bbox;
+          
+          // Scale with letterbox offsets
+          const scaledX1 = offsetX + x1 * scale;
+          const scaledY1 = offsetY + y1 * scale;
+          const scaledX2 = offsetX + x2 * scale;
+          const scaledY2 = offsetY + y2 * scale;
+          
+          const gesture_name = gesture.gesture;
+          const confidence = gesture.confidence;
+          const priority = gesture.priority;
+          
+          // Color coding for gestures
+          let color;
+          if (priority >= 9) {
+            color = '#dc2626'; // Red - Emergency
+          } else if (priority >= 6) {
+            color = '#7c3aed'; // Magenta - High priority
+          } else {
+            color = '#06b6d4'; // Cyan - Normal
+          }
+          
+          // Draw bounding box
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(scaledX1, scaledY1, scaledX2 - scaledX1, scaledY2 - scaledY1);
+          
+          // Draw label
+          ctx.fillStyle = color;
+          ctx.font = '12px Arial';
+          ctx.fillText(`${gesture_name}: ${Math.round(confidence * 100)}%`, scaledX1, scaledY1 - 5);
+          
+          // Draw center point if available
+          if (gesture.center && gesture.center.length >= 2) {
+            const [cx, cy] = gesture.center;
+            const scaledCx = offsetX + cx * scale;
+            const scaledCy = offsetY + cy * scale;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(scaledCx, scaledCy, 3, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+      });
+    }
+  };
 
   if (cameraId !== 'FF-001') {
     // Show placeholder for other cameras
@@ -213,7 +262,7 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate }) => {
                 ref={videoRef}
                 src={videoSrc}
                 alt="Live video feed"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain bg-black"
                 style={{ imageRendering: 'pixelated' }}
               />
               
@@ -224,15 +273,19 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate }) => {
                 style={{ zIndex: 10 }}
               />
               
-              {/* Connection status */}
-              <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded text-xs">
-                {isConnected ? 'LIVE' : 'CONNECTING...'}
-              </div>
+              {/* Connection status - only show if HUD overlays are enabled */}
+              {showHUDOverlays && (
+                <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded text-xs">
+                  {isConnected ? 'LIVE' : 'CONNECTING...'}
+                </div>
+              )}
               
-              {/* Detection count overlay */}
-              <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
-                Objects: {detections.length} | Poses: {poses.length}
-              </div>
+              {/* Detection count overlay - only show if HUD overlays are enabled */}
+              {showHUDOverlays && (
+                <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
+                  Objects: {detections.length} | Gestures: {gestures.length}
+                </div>
+              )}
             </>
           ) : (
             <div className="flex items-center justify-center h-full">
