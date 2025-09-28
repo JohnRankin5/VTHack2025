@@ -222,7 +222,7 @@ async def main():
     # Configuration
     laptop_port = 65431
     jetson_port = 65432
-    host = "10.42.0.117"  # change to "0.0.0.0" to bind all interfaces
+    host = "10.42.0.117"  # Use localhost when not on dedicated WiFi
     api_host = "localhost"
     api_port = 5003
 

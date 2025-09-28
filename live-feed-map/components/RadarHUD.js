@@ -17,18 +17,21 @@ const RadarHUD = ({ radarData, isVisible = true }) => {
     }
   }, [radarData?.collision_warning?.level]);
 
-  if (!isVisible || !radarData) {
+  if (!isVisible) {
     return null;
   }
 
-  const hudData = radarData.hud_data || {};
-  const collisionWarning = radarData.collision_warning;
-  const distanceViz = radarData.distance_visualization;
-  const systemStats = radarData.system_stats || {};
+  const hudData = radarData?.hud_data || {};
+  const collisionWarning = radarData?.collision_warning;
+  const distanceViz = radarData?.distance_visualization;
+  const systemStats = radarData?.system_stats || {};
 
   const distance = hudData.distance_m;
   const status = hudData.status || 'NO_DATA';
   const trend = hudData.distance_trend || 'STABLE';
+
+  // Check if radar data is available
+  const radarAvailable = radarData && (distance !== null && distance !== undefined);
 
   // Status color mapping
   const getStatusColor = (status) => {
@@ -56,26 +59,42 @@ const RadarHUD = ({ radarData, isVisible = true }) => {
       <div className="absolute top-4 right-4 pointer-events-auto">
         <div 
           className="bg-black bg-opacity-80 border-2 rounded-lg p-3 min-w-[200px]"
-          style={{ borderColor: getStatusColor(status) }}
+          style={{ borderColor: radarAvailable ? getStatusColor(status) : '#666666' }}
         >
-          <div className="text-white text-lg font-bold mb-1">
-            🎯 Distance: {distance ? `${distance.toFixed(1)}m` : 'N/A'}
-          </div>
-          <div 
-            className="text-sm font-medium mb-1"
-            style={{ color: getStatusColor(status) }}
-          >
-            Status: {status} {getTrendIcon(trend)}
-          </div>
-          {hudData.movement_recommendation && (
-            <div className="text-xs text-gray-300">
-              Recommend: {hudData.movement_recommendation.replace('_', ' ')}
-            </div>
-          )}
-          {systemStats.system_health === 'STALE_DATA' && (
-            <div className="text-xs text-red-400 mt-1">
-              ⚠️ Radar data stale
-            </div>
+          {radarAvailable ? (
+            <>
+              <div className="text-white text-lg font-bold mb-1">
+                🎯 Distance: {distance.toFixed(1)}m
+              </div>
+              <div 
+                className="text-sm font-medium mb-1"
+                style={{ color: getStatusColor(status) }}
+              >
+                Status: {status} {getTrendIcon(trend)}
+              </div>
+              {hudData.movement_recommendation && (
+                <div className="text-xs text-gray-300">
+                  Recommend: {hudData.movement_recommendation.replace('_', ' ')}
+                </div>
+              )}
+              {systemStats.system_health === 'STALE_DATA' && (
+                <div className="text-xs text-red-400 mt-1">
+                  ⚠️ Radar data stale
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="text-gray-400 text-lg font-bold mb-1">
+                📡 Radar: OFF
+              </div>
+              <div className="text-sm text-gray-500 mb-1">
+                Status: Not Available
+              </div>
+              <div className="text-xs text-gray-500">
+                Connect radar for distance measurement
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -114,19 +133,28 @@ const RadarHUD = ({ radarData, isVisible = true }) => {
       )}
 
       {/* Radar Visualization - Bottom Left */}
-      {distanceViz && (
-        <div className="absolute bottom-4 left-4 pointer-events-auto">
-          <div className="bg-black bg-opacity-80 border border-gray-600 rounded-lg p-3">
-            <div className="text-white text-sm font-bold mb-2 text-center">
-              🔘 RADAR
-            </div>
-            <RadarDisplay distanceViz={distanceViz} />
-            <div className="text-xs text-gray-300 mt-2 text-center">
-              Range: {distanceViz.max_range?.toFixed(1)}m
-            </div>
+      <div className="absolute bottom-4 left-4 pointer-events-auto">
+        <div className="bg-black bg-opacity-80 border border-gray-600 rounded-lg p-3">
+          <div className={`text-sm font-bold mb-2 text-center ${radarAvailable ? 'text-white' : 'text-gray-500'}`}>
+            🔘 RADAR {!radarAvailable && '(OFF)'}
           </div>
+          {radarAvailable && distanceViz ? (
+            <>
+              <RadarDisplay distanceViz={distanceViz} />
+              <div className="text-xs text-gray-300 mt-2 text-center">
+                Range: {distanceViz.max_range?.toFixed(1)}m
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center" style={{ width: 100, height: 100 }}>
+              <div className="text-center">
+                <div className="text-gray-500 text-2xl mb-1">📡</div>
+                <div className="text-xs text-gray-500">Offline</div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* System Status - Bottom Right */}
       <div className="absolute bottom-4 right-4 pointer-events-auto">
