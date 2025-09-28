@@ -3,9 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 
 const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectDetection = true, showGestureDetection = true, showHUDOverlays = true }) => {
-  // Debug logging
-  console.log('LiveVideoStream props:', { showObjectDetection, showGestureDetection, showHUDOverlays });
-  
   const [videoSrc, setVideoSrc] = useState(null);
   const [detections, setDetections] = useState([]);
   const [gestures, setGestures] = useState([]);
@@ -106,7 +103,6 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
         setError('Failed to connect to video stream');
         setIsConnected(false);
       };
-
     } catch (err) {
       console.error('Error connecting to WebSocket:', err);
       setError('Failed to connect to video stream');
@@ -127,7 +123,7 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
   const drawDetections = (ctx, detections, gestures) => {
     // Clear previous drawings
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    
+  
     console.log('drawDetections called with:', { 
       showObjectDetection, 
       showGestureDetection, 
@@ -135,9 +131,8 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
       gesturesCount: gestures.length,
       canvasSize: { width: ctx.canvas.width, height: ctx.canvas.height }
     });
-    
+  
     // Calculate letterbox-aware scaling
-    // Backend sends coordinates for 640x480, but canvas/container may differ
     const backendWidth = 640;
     const backendHeight = 480;
     const scale = Math.min(ctx.canvas.width / backendWidth, ctx.canvas.height / backendHeight);
@@ -145,25 +140,25 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
     const displayHeight = backendHeight * scale;
     const offsetX = (ctx.canvas.width - displayWidth) / 2;
     const offsetY = (ctx.canvas.height - displayHeight) / 2;
-    
+  
     console.log('Scaling:', { scale, offsetX, offsetY, displayWidth, displayHeight });
-    
+  
     // Draw object detection boxes (only if enabled)
     if (showObjectDetection && detections.length > 0) {
-      detections.forEach((detection, index) => {
+      detections.forEach((detection) => {
         if (detection.type === 'object') {
           const [x1, y1, x2, y2] = detection.bbox;
-          
+  
           // Scale with letterbox offsets
           const scaledX1 = offsetX + x1 * scale;
           const scaledY1 = offsetY + y1 * scale;
           const scaledX2 = offsetX + x2 * scale;
           const scaledY2 = offsetY + y2 * scale;
-          
+  
           const confidence = detection.confidence;
           const class_name = detection.class_name;
           const priority = detection.priority;
-          
+  
           // Color coding for objects
           let color;
           if (priority >= 8) {
@@ -173,12 +168,12 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
           } else {
             color = '#3b82f6'; // Blue - Low priority
           }
-          
+  
           // Draw bounding box
           ctx.strokeStyle = color;
           ctx.lineWidth = 2;
           ctx.strokeRect(scaledX1, scaledY1, scaledX2 - scaledX1, scaledY2 - scaledY1);
-          
+  
           // Draw label
           ctx.fillStyle = color;
           ctx.font = '12px Arial';
@@ -186,43 +181,42 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
         }
       });
     }
-    
+  
     // Draw gesture detection boxes (only if enabled)
     if (showGestureDetection && gestures.length > 0) {
-      gestures.forEach((gesture, index) => {
-        if (gesture.type === 'gesture') {
+      gestures.forEach((gesture) => {
+        if (gesture.bbox) {
           const [x1, y1, x2, y2] = gesture.bbox;
-          
+  
           // Scale with letterbox offsets
           const scaledX1 = offsetX + x1 * scale;
           const scaledY1 = offsetY + y1 * scale;
           const scaledX2 = offsetX + x2 * scale;
           const scaledY2 = offsetY + y2 * scale;
-          
+  
           const gesture_name = gesture.gesture;
           const confidence = gesture.confidence;
-          const priority = gesture.priority;
-          
+  
           // Color coding for gestures
           let color;
-          if (priority >= 9) {
+          if (gesture_name.includes('emergency')) {
             color = '#dc2626'; // Red - Emergency
-          } else if (priority >= 6) {
+          } else if (gesture_name.includes('affirmative')) {
             color = '#7c3aed'; // Magenta - High priority
           } else {
             color = '#06b6d4'; // Cyan - Normal
           }
-          
+  
           // Draw bounding box
           ctx.strokeStyle = color;
           ctx.lineWidth = 2;
           ctx.strokeRect(scaledX1, scaledY1, scaledX2 - scaledX1, scaledY2 - scaledY1);
-          
+  
           // Draw label
           ctx.fillStyle = color;
           ctx.font = '12px Arial';
           ctx.fillText(`${gesture_name}: ${Math.round(confidence * 100)}%`, scaledX1, scaledY1 - 5);
-          
+  
           // Draw center point if available
           if (gesture.center && gesture.center.length >= 2) {
             const [cx, cy] = gesture.center;
@@ -237,9 +231,8 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
       });
     }
   };
-
+  
   if (cameraId !== 'FF-001') {
-    // Show placeholder for other cameras
     return (
       <div className="w-full h-full bg-gray-700 rounded-lg flex items-center justify-center relative overflow-hidden">
         <div className="text-center text-gray-300">
@@ -257,7 +250,6 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
         <>
           {videoSrc ? (
             <>
-              {/* Video element */}
               <img
                 ref={videoRef}
                 src={videoSrc}
@@ -266,21 +258,18 @@ const LiveVideoStream = ({ cameraId, isDetecting, onDetectionUpdate, showObjectD
                 style={{ imageRendering: 'pixelated' }}
               />
               
-              {/* Detection overlay canvas */}
               <canvas
                 ref={canvasRef}
                 className="absolute top-0 left-0 w-full h-full pointer-events-none"
                 style={{ zIndex: 10 }}
               />
               
-              {/* Connection status - only show if HUD overlays are enabled */}
               {showHUDOverlays && (
                 <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded text-xs">
                   {isConnected ? 'LIVE' : 'CONNECTING...'}
                 </div>
               )}
               
-              {/* Detection count overlay - only show if HUD overlays are enabled */}
               {showHUDOverlays && (
                 <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
                   Objects: {detections.length} | Gestures: {gestures.length}
