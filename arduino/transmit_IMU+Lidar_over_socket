@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+import asyncio
+import serial
+from rplidarc1 import RPLidar
+from datetime import datetime
+import json
+import websockets
+
+# -------------------
+# Serial Setup
+# -------------------
+ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+
+async def read_serial():
+    """Read a single line from the serial port asynchronously."""
+    line = await asyncio.to_thread(ser.readline)
+    if line:
+        # Decode safely ignoring invalid UTF-8 bytes
+        return line.decode("utf-8", errors="ignore").strip()
+    return None
+
+# -------------------
+# Lidar Setup
+# -------------------
+lidar = RPLidar("/dev/ttyUSB0", 460800)
+
+async def read_lidar(queue):
+    """Read one lidar datapoint from the queue asynchronously."""
+    while True:
+        if not queue.empty():
+            return await queue.get()
+        await asyncio.sleep(0.01)
+
+# -------------------
+# WebSocket Client
+# -------------------
+SERVER_URI = "ws://10.42.0.125:8765"
+
+async def transmitter_client():
+    """Connect to server and send serial + lidar data."""
+    async with websockets.connect(SERVER_URI) as websocket:
+        print(f"Connected to server at {SERVER_URI}")
+
+        # -------------------
+        # Main loop with TaskGroup
+        # -------------------
+        async with asyncio.TaskGroup() as tg:
+            # Start Lidar scanning task
+            tg.create_task(lidar.simple_scan(make_return_dict=True))
+
+            # Continuous read/send loop
+            while True:
+                async with asyncio.TaskGroup() as read_group:
+                    serial_task = read_group.create_task(read_serial())
+                    lidar_task = read_group.create_task(read_lidar(lidar.output_queue))
+
+                serial_data, lidar_data = serial_task.result(), lidar_task.result()
+
+                if serial_data and lidar_data:
+                    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+
+                    message = {
+                        "timestamp": timestamp,
+                        "serial": serial_data,
+                        "lidar": {
+                            "angle_deg": lidar_data.get("a_deg"),
+                            "distance_mm": lidar_data.get("d_mm"),
+                            "quality": lidar_data.get("q"),
+                        },
+                    }
+
+                    # Print locally
+                    print(f"[{timestamp}] Serial: {serial_data} | "
+                          f"Lidar → {lidar_data['a_deg']}° {lidar_data['d_mm']}mm Q={lidar_data['q']}")
+
+                    # Send to server
+                    await websocket.send(json.dumps(message))
+
+# -------------------
+# Run
+# -------------------
+if __name__ == "__main__":
+    try:
+        asyncio.run(transmitter_client())
+    except KeyboardInterrupt:
+        print("\nStopping transmitter...")
+        lidar.reset()
+        if ser.is_open:
+            ser.close()
+        print("Closed.")
+	
